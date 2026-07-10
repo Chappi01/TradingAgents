@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gastro-Imperium</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+<style>
+:root{
+  --gold:#e8b84b; --gold-soft:#f5d78a;
+  --bg-panel:rgba(16,18,26,.72); --bg-card:rgba(255,255,255,.055);
+  --border:rgba(255,255,255,.09); --text:#f2f0ea; --text-dim:#9aa0ad;
+  --green:#6fd58a; --radius:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--text);background:#0b0e18;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#scene{position:fixed;inset:0}
+#scene canvas{display:block;cursor:grab}
+#scene canvas:active{cursor:grabbing}
+
+/* ---------- Topbar ---------- */
+#topbar{position:fixed;top:14px;left:14px;display:flex;flex-direction:column;gap:4px;z-index:5;
+  background:var(--bg-panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px 12px 16px;
+  box-shadow:0 8px 30px rgba(0,0,0,.35)}
+#gameTitle{font-size:11px;letter-spacing:.24em;color:var(--gold);font-weight:700;text-transform:uppercase}
+#money{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;
+  background:linear-gradient(180deg,#fff 20%,var(--gold-soft));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+#rate{font-size:13px;color:var(--text-dim);font-variant-numeric:tabular-nums}
+#rate b{color:var(--green);font-weight:600}
+#starsInfo{font-size:12px;color:var(--gold-soft);display:none}
+
+#controls{position:fixed;top:14px;right:14px;display:flex;gap:8px;z-index:6}
+.ctl{background:var(--bg-panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;font-weight:600;
+  padding:10px 14px;cursor:pointer;transition:transform .12s,background .2s}
+.ctl:hover{background:rgba(255,255,255,.12)}
+.ctl:active{transform:scale(.94)}
+#btnPrestige{color:var(--gold-soft)}
+#btnPrestige.ready{animation:glowPulse 2.2s ease-in-out infinite;border-color:rgba(232,184,75,.6)}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 0 rgba(232,184,75,0)}50%{box-shadow:0 0 18px rgba(232,184,75,.45)}}
+
+/* ---------- Event banner ---------- */
+#eventBanner{position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-90px);z-index:5;
+  background:linear-gradient(135deg,rgba(90,54,150,.85),rgba(190,84,45,.85));backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.25);border-radius:var(--radius);padding:10px 20px;
+  font-size:14px;font-weight:600;text-align:center;box-shadow:0 10px 34px rgba(0,0,0,.45);
+  transition:transform .5s cubic-bezier(.34,1.56,.64,1);max-width:min(520px,86vw)}
+#eventBanner.show{transform:translateX(-50%) translateY(0)}
+#eventBanner small{display:block;font-weight:400;color:rgba(255,255,255,.75);font-size:11px;margin-top:2px}
+
+/* ---------- Panel ---------- */
+#panel{position:fixed;top:0;right:0;bottom:0;width:352px;z-index:4;display:flex;flex-direction:column;
+  padding:74px 12px 12px;pointer-events:none}
+#panelInner{pointer-events:auto;overflow-y:auto;display:flex;flex-direction:column;gap:10px;
+  padding:6px 4px 20px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+#panelInner::-webkit-scrollbar{width:6px}
+#panelInner::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:3px}
+
+.card{background:var(--bg-panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;
+  box-shadow:0 6px 22px rgba(0,0,0,.3);animation:cardIn .45s cubic-bezier(.34,1.56,.64,1);cursor:pointer;
+  transition:border-color .25s}
+.card:hover{border-color:rgba(255,255,255,.2)}
+@keyframes cardIn{from{opacity:0;transform:translateX(46px) scale(.92)}to{opacity:1;transform:none}}
+.crow{display:flex;align-items:center;gap:10px}
+.cemoji{font-size:26px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}
+.cinfo{flex:1;min-width:0}
+.cname{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.csub{font-size:11px;color:var(--text-dim);margin-top:1px}
+.cearn{text-align:right;font-variant-numeric:tabular-nums}
+.cearn .val{font-size:13px;font-weight:700;color:var(--green)}
+.cearn .per{font-size:10px;color:var(--text-dim)}
+.pbar{height:9px;border-radius:6px;background:rgba(0,0,0,.45);margin:9px 0 9px;overflow:hidden;position:relative}
+.pfill{position:absolute;inset:0;border-radius:6px;background:linear-gradient(90deg,#4f9e63,#7ede97);
+  transform-origin:left;transform:scaleX(0)}
+.pfill.continuous{background:linear-gradient(90deg,#4f9e63,#7ede97,#4f9e63);background-size:200% 100%;
+  animation:flow 1.2s linear infinite;transform:scaleX(1)!important}
+@keyframes flow{from{background-position:0 0}to{background-position:-200% 0}}
+.pbar .shine{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
+  background-size:200% 100%;animation:shine 2.6s linear infinite;border-radius:6px}
+@keyframes shine{from{background-position:200% 0}to{background-position:-200% 0}}
+.buy{width:100%;border:none;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;font-weight:700;
+  color:#1c2210;background:linear-gradient(180deg,#8fdc85,#5cab5d);cursor:pointer;display:flex;justify-content:space-between;gap:8px;
+  transition:transform .1s,filter .2s;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+.buy:hover{filter:brightness(1.08)}
+.buy:active{transform:scale(.96)}
+.buy:disabled{background:rgba(255,255,255,.09);color:var(--text-dim);cursor:default;box-shadow:none}
+.buy .cost{font-variant-numeric:tabular-nums;font-weight:600}
+.card.locked{opacity:.92}
+.card.locked .cname{color:var(--gold-soft)}
+.buy.unlock{background:linear-gradient(180deg,#f3d98b,#d4a52f);color:#2b2008}
+.buy.unlock:disabled{background:rgba(255,255,255,.09);color:var(--text-dim)}
+.mshint{font-size:10.5px;color:var(--text-dim);margin-top:7px;text-align:center}
+.mshint b{color:var(--gold-soft);font-weight:600}
+
+/* ---------- Toasts ---------- */
+#toasts{position:fixed;bottom:16px;left:16px;display:flex;flex-direction:column;gap:8px;z-index:8;pointer-events:none}
+.toast{background:var(--bg-panel);backdrop-filter:blur(12px);border:1px solid var(--border);
+  border-left:3px solid var(--gold);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastIn .4s cubic-bezier(.34,1.56,.64,1);max-width:340px}
+.toast.out{transition:opacity .5s,transform .5s;opacity:0;transform:translateX(-30px)}
+@keyframes toastIn{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
+
+/* ---------- Modals ---------- */
+#modalWrap{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
+  background:rgba(5,7,14,.6);backdrop-filter:blur(6px)}
+#modalWrap.show{display:flex}
+#modal{background:rgba(22,25,36,.96);border:1px solid var(--border);border-radius:18px;padding:26px 28px;
+  max-width:min(430px,90vw);max-height:84vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,0,0,.6);
+  animation:modalIn .35s cubic-bezier(.34,1.56,.64,1);text-align:center}
+@keyframes modalIn{from{opacity:0;transform:scale(.85) translateY(24px)}to{opacity:1;transform:none}}
+#modal h2{font-size:20px;margin-bottom:10px;color:var(--gold-soft)}
+#modal p{font-size:13.5px;line-height:1.55;color:#cfd3db;margin-bottom:12px;text-align:left}
+#modal p.center{text-align:center}
+#modal .big{font-size:26px;font-weight:800;color:var(--green);margin:8px 0 14px}
+#modal .mbtn{border:none;border-radius:11px;padding:11px 22px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;
+  margin:4px 5px;transition:transform .1s}
+#modal .mbtn:active{transform:scale(.95)}
+#modal .primary{background:linear-gradient(180deg,#f3d98b,#d4a52f);color:#2b2008}
+#modal .primary:disabled{background:rgba(255,255,255,.1);color:var(--text-dim);cursor:default}
+#modal .ghost{background:rgba(255,255,255,.08);color:var(--text)}
+#modal .danger{display:inline-block;margin-top:16px;font-size:11px;color:#c96a6a;cursor:pointer;background:none;border:none;font-family:inherit}
+
+/* ---------- Responsive ---------- */
+@media (max-width:760px){
+  #panel{top:auto;left:0;width:100%;height:46%;padding:0 10px 10px}
+  #panelInner{padding-top:8px}
+  #money{font-size:24px}
+  #topbar{padding:10px 14px}
+  #eventBanner{top:auto;bottom:47%;font-size:12px}
+}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+
+<div id="topbar">
+  <div id="gameTitle">🍽️ Gastro-Imperium</div>
+  <div id="money">0 €</div>
+  <div id="rate"><b>0 €</b> pro Sekunde</div>
+  <div id="starsInfo"></div>
+</div>
+
+<div id="controls">
+  <button class="ctl" id="btnBuyAmt" title="Kaufmenge umschalten">×1</button>
+  <button class="ctl" id="btnMute" title="Ton an/aus">🔊</button>
+  <button class="ctl" id="btnHelp" title="Hilfe">?</button>
+  <button class="ctl" id="btnPrestige" title="Neueröffnung">⭐</button>
+</div>
+
+<div id="eventBanner"></div>
+<div id="panel"><div id="panelInner"></div></div>
+<div id="toasts"></div>
+<div id="modalWrap"><div id="modal"></div></div>
+
+<script src="three.min.js"></script>
+<script>
+'use strict';
+/* ============================================================
+   GASTRO-IMPERIUM — ein 3D-Idle-Spiel. Nur Spielgeld, kein Echtgeld.
+   ============================================================ */
+
+/* ---------- Zahlen & Utilities ---------- */
+const TIERS=[['Mio.',1e6],['Mrd.',1e9],['Bio.',1e12],['Brd.',1e15],['Tri.',1e18],['Trd.',1e21],
+  ['Qua.',1e24],['Qud.',1e27],['Qui.',1e30],['Qip.',1e33],['Sex.',1e36],['Sed.',1e39],
+  ['Sep.',1e42],['Spd.',1e45],['Okt.',1e48],['Okd.',1e51],['Non.',1e54],['Nod.',1e57],
+  ['Dez.',1e60],['Dzd.',1e63]];
+function fmt(n){
+  if(!isFinite(n))return'∞';
+  if(n<0)return'-'+fmt(-n);
+  if(n<1e6)return n.toLocaleString('de-DE',{maximumFractionDigits:0});
+  for(let i=TIERS.length-1;i>=0;i--){
+    if(n>=TIERS[i][1])return (n/TIERS[i][1]).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+TIERS[i][0];
+  }
+  return n.toExponential(2).replace('.',',');
+}
+function fmtT(s){return s>=10?Math.round(s)+' s':s.toLocaleString('de-DE',{maximumFractionDigits:1})+' s';}
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rand=(a,b)=>a+Math.random()*(b-a);
+const randI=(a,b)=>Math.floor(rand(a,b+1));
+
+/* ---------- Betriebe ---------- */
+const HAND=[
+ {name:'Imbissbude',emoji:'🌭',desc:'Currywurst mit Herz',cost:4,rev:5,time:2,color:0xcf7f4a,accent:0xf2c14e,floors:1,awning:1,chimney:1},
+ {name:'Café',emoji:'☕',desc:'Kaffee, Kuchen, Gemütlichkeit',cost:60,rev:35,time:4,color:0xb98a63,accent:0x7ccdb8,floors:1,awning:1,tables:1},
+ {name:'Foodtruck',emoji:'🌮',desc:'Streetfood auf vier Rädern',cost:720,rev:300,time:6,color:0x5f97c9,accent:0xf2c14e,truck:1},
+ {name:'Restaurant',emoji:'🍝',desc:'La dolce vita, jeden Abend',cost:8600,rev:2600,time:9,color:0xb0495e,accent:0xf5e6c8,floors:2,awning:1,tables:1,chimney:1},
+ {name:'Bar',emoji:'🍺',desc:'Frisch gezapft seit heute',cost:104e3,rev:23e3,time:12,color:0x8d6e63,accent:0xffb14e,floors:1,neon:1},
+ {name:'Cocktailbar',emoji:'🍸',desc:'Shaken, not stirred',cost:1.25e6,rev:2e5,time:16,color:0x3fa7a0,accent:0xff6fa5,floors:2,neon:1},
+ {name:'Sternerestaurant',emoji:'🥂',desc:'Drei Gänge, tausend Sterne',cost:1.5e7,rev:1.8e6,time:24,color:0xd9c58a,accent:0xffffff,floors:3,tables:1,chimney:1},
+ {name:'Club',emoji:'🎧',desc:'Bass bis zum Morgengrauen',cost:1.8e8,rev:1.6e7,time:36,color:0x7b4fd9,accent:0x4ef2e0,floors:2,neon:1,dance:1},
+ {name:'Großraumdisko',emoji:'🪩',desc:'Drei Floors, kein Morgen',cost:2.16e9,rev:1.4e8,time:48,color:0xd94f9e,accent:0x4eaef2,floors:3,neon:1,dance:1},
+ {name:'Rooftop-Lounge',emoji:'🌆',desc:'Drinks über den Dächern',cost:2.6e10,rev:1.3e9,time:64,color:0x4f6fd9,accent:0xf2c14e,floors:4,neon:1,tables:1},
+];
+const P_PRE=['Mega','Gourmet','Galaxie','Königs','Neon','Kristall','Diamant','Himmels','Infinity','Quanten'];
+const P_BASE=['Food-Court','Dinner-Palast','Strandbar','Skybar','Eventhalle','Weinkeller','Braukeller','Festpalast','Buffet-Liner','Sterneninsel'];
+const P_EMOJI=['🍜','🥂','🏝️','🌃','🎪','🍷','🍻','🏰','🛳️','🌌'];
+const defCache=[];
+function getDef(i){
+  if(defCache[i])return defCache[i];
+  let d;
+  if(i<HAND.length){d=Object.assign({},HAND[i]);}
+  else{
+    const k=i-HAND.length;
+    const gen=Math.floor(k/100);
+    const c=new THREE.Color().setHSL(((i*47)%360)/360,.5,.55);
+    d={name:P_PRE[(i*7)%10]+'-'+P_BASE[i%10]+(gen>0?' '+(gen+1)+'.0':''),
+       emoji:P_EMOJI[i%10],desc:'Gastronomie der Stufe '+(i+1),
+       cost:2.6e10*Math.pow(12,i-9),rev:0,time:60+(k%6)*12,
+       color:c.getHex(),accent:new THREE.Color().setHSL(((i*47+140)%360)/360,.7,.65).getHex(),
+       floors:2+(i%3),neon:(i%2===0)?1:0,tables:(i%2===1)?1:0,dance:(i%2===0)?1:0};
+    d.rev=d.cost/18;
+  }
+  d.growth=Math.min(1.09+i*0.004,1.175);
+  defCache[i]=d;return d;
+}
+
+/* ---------- Spielstand ---------- */
+const SAVE_KEY='gastroImperiumSave';
+const DAY_LEN=240;
+let S=null;
+function freshState(){
+  return {v:1,money:0,runEarned:0,lifeEarned:0,stars:0,prestiges:0,
+    gameTime:DAY_LEN*0.32,lastSeen:Date.now(),muted:false,buyAmt:1,
+    venues:[{lvl:1,prog:0}]};
+}
+function save(){try{S.lastSeen=Date.now();localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}}
+function load(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw)return freshState();
+    const s=JSON.parse(raw);
+    if(!s.venues||!s.venues.length)return freshState();
+    return Object.assign(freshState(),s);
+  }catch(e){return freshState();}
+}
+
+/* ---------- Meilensteine & Werte ---------- */
+function msCount(l){let c=0;if(l>=10)c++;if(l>=25)c++;if(l>=50)c++;if(l>=100)c+=Math.floor(l/100);return c;}
+function nextMs(l){if(l<10)return 10;if(l<25)return 25;if(l<50)return 50;return (Math.floor(l/100)+1)*100;}
+function starMult(){return 1+0.02*S.stars;}
+function venueStats(i){
+  const d=getDef(i),v=S.venues[i];
+  const ms=msCount(v.lvl);
+  const maxSpeed=Math.max(0,Math.floor(Math.log2(d.time/0.25)));
+  const k=Math.min(ms,maxSpeed);
+  const time=d.time/Math.pow(2,k);
+  const rev=d.rev*v.lvl*Math.pow(2,ms-k)*starMult()*eventMult(i);
+  return {time,rev,rate:rev/time,continuous:time<=0.27};
+}
+function totalRate(){let r=0;for(let i=0;i<S.venues.length;i++)r+=venueStats(i).rate;return r;}
+function levelCost(i,count){
+  const d=getDef(i),g=d.growth,c0=d.cost*Math.pow(g,S.venues[i].lvl);
+  return c0*(Math.pow(g,count)-1)/(g-1);
+}
+function maxAffordable(i){
+  const d=getDef(i),g=d.growth,c0=d.cost*Math.pow(g,S.venues[i].lvl);
+  if(S.money<c0)return 0;
+  return Math.floor(Math.log(S.money*(g-1)/c0+1)/Math.log(g));
+}
+function buyCount(i){
+  if(S.buyAmt==='max')return Math.max(1,maxAffordable(i));
+  return S.buyAmt;
+}
+
+/* ---------- Audio (prozedural, dezent) ---------- */
+let ac=null,master=null,lastCashSnd=0;
+function ensureAudio(){
+  if(ac)return;
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)return;
+  ac=new AC();master=ac.createGain();master.gain.value=0.14;master.connect(ac.destination);
+}
+function tone(f0,f1,dur,type,vol,delay){
+  if(!ac||S.muted)return;
+  const t=ac.currentTime+(delay||0);
+  const o=ac.createOscillator(),g=ac.createGain();
+  o.type=type||'sine';
+  o.frequency.setValueAtTime(f0,t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(1,f1),t+dur);
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime((vol||1)*0.5,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+0.05);
+}
+function sndCash(){const n=performance.now();if(n-lastCashSnd<140)return;lastCashSnd=n;
+  tone(1318,1568,0.09,'sine',0.35);tone(2637,2637,0.06,'sine',0.12,0.03);}
+function sndBuy(){tone(294,392,0.07,'triangle',0.5);tone(392,523,0.09,'triangle',0.5,0.06);}
+function sndUnlock(){[523,659,784,1047].forEach((f,j)=>tone(f,f,0.16,'triangle',0.5,j*0.09));}
+function sndMilestone(){[659,831,988,1319].forEach((f,j)=>tone(f,f,0.14,'triangle',0.45,j*0.07));}
+function sndEvent(){tone(880,660,0.25,'sine',0.4);tone(660,880,0.25,'sine',0.4,0.22);}
+
+/* ---------- Events ---------- */
+let events=[],nextEventAt=0;
+function eventMult(i){
+  let m=1;
+  for(const e of events)if(e.until>S.gameTime&&(e.venue<0||e.venue===i))m*=e.mult;
+  return m;
+}
+function spawnEvent(){
+  const owned=S.venues.length;
+  const vi=randI(0,owned-1);
+  const vd=getDef(vi);
+  const pool=[
+    {venue:vi,mult:5,dur:30,text:'🧐 Ein Foodkritiker schwärmt: „'+vd.name+'“! Einnahmen ×5'},
+    {venue:-1,mult:2,dur:35,text:'🚌 Ein Reisebus voller Gäste hält an! Alle Betriebe ×2'},
+    {venue:vi,mult:4,dur:25,text:'📸 Influencer-Story über „'+vd.name+'“ geht viral! ×4'},
+    {venue:-1,mult:3,dur:20,text:'🍻 Happy Hour in der ganzen Straße! Alles ×3'},
+  ];
+  const e=pool[randI(0,pool.length-1)];
+  e.until=S.gameTime+e.dur;
+  events.push(e);
+  showBanner(e);
+  sndEvent();
+  rushVenue=e.venue>=0?e.venue:randI(0,owned-1);
+  rushUntil=S.gameTime+e.dur;
+}
+const bannerEl=document.getElementById('eventBanner');
+let bannerEvent=null;
+function showBanner(e){bannerEvent=e;bannerEl.classList.add('show');}
+function updateBanner(){
+  events=events.filter(e=>e.until>S.gameTime);
+  if(bannerEvent){
+    const left=bannerEvent.until-S.gameTime;
+    if(left<=0){bannerEvent=null;bannerEl.classList.remove('show');}
+    else bannerEl.innerHTML=bannerEvent.text+'<small>noch '+Math.ceil(left)+' s</small>';
+  }
+}
+
+/* ---------- Toasts ---------- */
+const toastsEl=document.getElementById('toasts');
+function toast(msg){
+  const t=document.createElement('div');t.className='toast';t.innerHTML=msg;
+  toastsEl.appendChild(t);
+  setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),600);},4200);
+  while(toastsEl.children.length>4)toastsEl.firstChild.remove();
+}
+
+/* ============================================================
+   3D-WELT
+   ============================================================ */
+const SPACING=9;
+let renderer,scene,camera,sun,hemi,skyCol=new THREE.Color();
+let buildings=[];      // {group, body, winMat, neonMats:[], light, def, extraFloors, anim}
+let pickMeshes=[];
+let webglOk=true;
+
+const C={night:new THREE.Color(0x0d1330),day:new THREE.Color(0x9fd2f5),dawn:new THREE.Color(0xf2a65e),
+  sunDay:new THREE.Color(0xfff1d6),sunLow:new THREE.Color(0xff9a5e)};
+
+function initThree(){
+  try{
+    renderer=new THREE.WebGLRenderer({antialias:true});
+  }catch(e){webglOk=false;return;}
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  document.getElementById('scene').appendChild(renderer.domElement);
+
+  scene=new THREE.Scene();
+  scene.fog=new THREE.Fog(0x9fd2f5,70,190);
+  camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,600);
+
+  hemi=new THREE.HemisphereLight(0xbfd9ff,0x6b5b4a,0.9);scene.add(hemi);
+  sun=new THREE.DirectionalLight(0xfff1d6,1.1);
+  sun.castShadow=true;
+  sun.shadow.mapSize.set(2048,2048);
+  sun.shadow.camera.left=-50;sun.shadow.camera.right=50;
+  sun.shadow.camera.top=50;sun.shadow.camera.bottom=-35;
+  sun.shadow.camera.far=220;
+  sun.shadow.bias=-0.0006;
+  scene.add(sun);scene.add(sun.target);
+
+  buildEnvironment();
+  buildStars();
+  buildClouds();
+  initPeople();
+  initParticles();
+  window.addEventListener('resize',()=>{
+    camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+  });
+}
+
+/* ---------- Umgebung (Straße, Lampen, Bäume) ---------- */
+let envGroup=null,envMaxX=0;
+const lampGlows=[],lampHeads=[];
+function buildEnvironment(){
+  const need=Math.max(4,S.venues.length+2)*SPACING;
+  if(envGroup&&need<=envMaxX)return;
+  if(envGroup){scene.remove(envGroup);envGroup.traverse(o=>{if(o.geometry)o.geometry.dispose();});}
+  lampGlows.length=0;lampHeads.length=0;
+  envMaxX=need+SPACING*4;
+  envGroup=new THREE.Group();
+  const x0=-22,x1=envMaxX;
+  const w=x1-x0;
+
+  const matGrass=new THREE.MeshStandardMaterial({color:0x7fae66,roughness:1});
+  const matWalk=new THREE.MeshStandardMaterial({color:0xb5ae9e,roughness:.95});
+  const matStreet=new THREE.MeshStandardMaterial({color:0x3c4046,roughness:.9});
+  function strip(z0,z1,mat,y){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,0.22,z1-z0),mat);
+    m.position.set(x0+w/2,(y||0)-0.11,(z0+z1)/2);
+    m.receiveShadow=true;envGroup.add(m);return m;
+  }
+  strip(-14,2.1,matGrass);          // hinter den Gebäuden
+  strip(2.1,5,matWalk);             // Gehweg vor den Läden
+  strip(5,11.5,matStreet);          // Straße
+  strip(11.5,14.5,matWalk);         // gegenüberliegender Gehweg
+  strip(14.5,34,matGrass);          // Park
+
+  // Mittelstreifen
+  const dashMat=new THREE.MeshBasicMaterial({color:0xd8d8ce});
+  for(let x=x0+2;x<x1;x+=5){
+    const d=new THREE.Mesh(new THREE.BoxGeometry(2,0.02,0.24),dashMat);
+    d.position.set(x,0.02,8.25);envGroup.add(d);
+  }
+  // Straßenlaternen
+  const poleMat=new THREE.MeshStandardMaterial({color:0x2e3138,roughness:.6});
+  const headMat=new THREE.MeshStandardMaterial({color:0xfff2c0,emissive:0xffdf8a,emissiveIntensity:0});
+  const glowTex=makeGlowTexture();
+  for(let x=x0+6;x<x1;x+=18){
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.12,4.4,6),poleMat);
+    pole.position.set(x,2.2,5.4);pole.castShadow=true;envGroup.add(pole);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.28,10,8),headMat.clone());
+    head.position.set(x,4.5,5.4);envGroup.add(head);lampHeads.push(head);
+    const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xffd98a,transparent:true,opacity:0,depthWrite:false}));
+    spr.scale.set(5,5,1);spr.position.set(x,4.5,5.4);envGroup.add(spr);lampGlows.push(spr);
+  }
+  // Bäume im Park
+  const trunkMat=new THREE.MeshStandardMaterial({color:0x6d4c33,roughness:1});
+  const leafMats=[0x5e9e50,0x6fae5a,0x4f8e46].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:1}));
+  let seed=7;
+  const srand=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
+  for(let x=x0+3;x<x1;x+=4+srand()*6){
+    const z=16+srand()*14;
+    const h=1.2+srand()*1.4;
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.2,h,6),trunkMat);
+    trunk.position.set(x,h/2,z);trunk.castShadow=true;envGroup.add(trunk);
+    const crown=new THREE.Mesh(new THREE.IcosahedronGeometry(0.9+srand()*0.8,0),leafMats[Math.floor(srand()*3)]);
+    crown.position.set(x,h+0.7,z);crown.castShadow=true;envGroup.add(crown);
+  }
+  scene.add(envGroup);
+}
+function makeGlowTexture(){
+  const c=document.createElement('canvas');c.width=c.height=64;
+  const g=c.getContext('2d');
+  const gr=g.createRadialGradient(32,32,2,32,32,30);
+  gr.addColorStop(0,'rgba(255,240,200,0.9)');gr.addColorStop(1,'rgba(255,240,200,0)');
+  g.fillStyle=gr;g.fillRect(0,0,64,64);
+  const t=new THREE.CanvasTexture(c);return t;
+}
+
+/* ---------- Sterne & Wolken ---------- */
+let starMat,clouds=[];
+function buildStars(){
+  const n=350,pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    pos[i*3]=rand(-150,900);pos[i*3+1]=rand(35,180);pos[i*3+2]=rand(-160,60);
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  starMat=new THREE.PointsMaterial({color:0xffffff,size:0.5,transparent:true,opacity:0,depthWrite:false});
+  scene.add(new THREE.Points(g,starMat));
+}
+function buildClouds(){
+  const mat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,transparent:true,opacity:.85});
+  for(let i=0;i<7;i++){
+    const gr=new THREE.Group();
+    for(let j=0;j<3;j++){
+      const m=new THREE.Mesh(new THREE.BoxGeometry(rand(3,6),rand(0.8,1.4),rand(2,3.4)),mat);
+      m.position.set(rand(-2.5,2.5),rand(-0.3,0.3),rand(-1,1));gr.add(m);
+    }
+    gr.position.set(rand(-40,140),rand(22,32),rand(-40,10));
+    gr.userData.spd=rand(0.25,0.7);
+    scene.add(gr);clouds.push(gr);
+  }
+}
+
+/* ---------- Schilder & Markisen (Canvas-Texturen) ---------- */
+function makeSignTexture(def){
+  const c=document.createElement('canvas');c.width=256;c.height=88;
+  const g=c.getContext('2d');
+  const ac2='#'+new THREE.Color(def.accent).getHexString();
+  g.fillStyle='rgba(18,16,24,0.94)';
+  roundRect(g,2,2,252,84,14);g.fill();
+  g.strokeStyle=ac2;g.lineWidth=4;
+  roundRect(g,4,4,248,80,12);g.stroke();
+  g.font='40px sans-serif';g.textBaseline='middle';
+  g.fillText(def.emoji,14,46);
+  g.fillStyle=ac2;
+  let fs=30;g.font='bold '+fs+'px sans-serif';
+  while(g.measureText(def.name).width>184&&fs>13){fs-=2;g.font='bold '+fs+'px sans-serif';}
+  g.fillText(def.name,62,48);
+  const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t;
+}
+function roundRect(g,x,y,w,h,r){
+  g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);
+  g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();
+}
+function makeAwningTexture(accent){
+  const c=document.createElement('canvas');c.width=128;c.height=64;
+  const g=c.getContext('2d');
+  const ac2='#'+new THREE.Color(accent).getHexString();
+  for(let i=0;i<8;i++){g.fillStyle=i%2?'#f4efe4':ac2;g.fillRect(i*16,0,16,64);}
+  return new THREE.CanvasTexture(c);
+}
+
+/* ---------- Gebäude ---------- */
+const geoCache={};
+function boxGeo(w,h,d){const k=w+'_'+h+'_'+d;if(!geoCache[k])geoCache[k]=new THREE.BoxGeometry(w,h,d);return geoCache[k];}
+let neonLightCount=0;
+
+function buildBuilding(i){
+  const def=getDef(i);
+  const extra=Math.min(msCount(S.venues[i].lvl),3);
+  const g=new THREE.Group();
+  g.position.set(i*SPACING,0,0);
+  const rec={group:g,def:def,winMat:null,neonMats:[],light:null,extraFloors:extra,anim:null,smoke:[],pop:0};
+
+  const darker=new THREE.Color(def.color).multiplyScalar(0.5).getHex();
+
+  if(def.truck){
+    const bodyMat=new THREE.MeshStandardMaterial({color:def.color,roughness:.5,metalness:.15});
+    const body=new THREE.Mesh(boxGeo(4.6,2.1,2.3),bodyMat);
+    body.position.set(0,1.45,0.6);body.castShadow=true;g.add(body);
+    const cab=new THREE.Mesh(boxGeo(1.3,1.5,2.3),new THREE.MeshStandardMaterial({color:darker,roughness:.5}));
+    cab.position.set(-2.85,1.15,0.6);cab.castShadow=true;g.add(cab);
+    const wheelG=new THREE.CylinderGeometry(0.42,0.42,0.3,12);
+    const wheelM=new THREE.MeshStandardMaterial({color:0x22242a,roughness:.9});
+    [[-2.8,1.5],[1.6,1.5],[-2.8,-0.28],[1.6,-0.28]].forEach(p=>{
+      const w=new THREE.Mesh(wheelG,wheelM);w.rotation.x=Math.PI/2;
+      w.position.set(p[0],0.42,p[1]);g.add(w);
+    });
+    // Verkaufsklappe
+    rec.winMat=new THREE.MeshStandardMaterial({color:0xbfe8ff,emissive:0xffc66b,emissiveIntensity:0,roughness:.3});
+    const hatch=new THREE.Mesh(boxGeo(2.6,0.9,0.1),rec.winMat);
+    hatch.position.set(0,1.7,1.78);g.add(hatch);
+    const sign=new THREE.Mesh(new THREE.PlaneGeometry(3,1.05),
+      new THREE.MeshBasicMaterial({map:makeSignTexture(def),transparent:true}));
+    sign.position.set(0,3,1.2);g.add(sign);
+    rec.signMesh=sign;
+  }else{
+    const floors=(def.floors||1)+extra;
+    const W=5,D=4.4,FH=2.25,H=floors*FH;
+    const bodyMat=new THREE.MeshStandardMaterial({color:def.color,roughness:.75});
+    const body=new THREE.Mesh(boxGeo(W,H,D),bodyMat);
+    body.position.y=H/2;body.castShadow=true;body.receiveShadow=true;g.add(body);
+    // Dach
+    const roof=new THREE.Mesh(boxGeo(W+0.5,0.3,D+0.5),new THREE.MeshStandardMaterial({color:darker,roughness:.85}));
+    roof.position.y=H+0.15;roof.castShadow=true;g.add(roof);
+    // Tür
+    const door=new THREE.Mesh(boxGeo(1.15,1.75,0.12),new THREE.MeshStandardMaterial({color:0x3a2e28,roughness:.7}));
+    door.position.set(0,0.87,D/2+0.06);g.add(door);
+    // Fenster
+    rec.winMat=new THREE.MeshStandardMaterial({color:0x9fc8e8,emissive:0xffc66b,emissiveIntensity:0,roughness:.35});
+    for(let f=0;f<floors;f++){
+      const y=f*FH+FH*0.62;
+      for(let wx=-1;wx<=1;wx++){
+        if(f===0&&wx===0)continue; // Tür ist da
+        const win=new THREE.Mesh(boxGeo(0.75,0.95,0.1),rec.winMat);
+        win.position.set(wx*1.55,y,D/2+0.05);g.add(win);
+      }
+    }
+    // Schild
+    const sign=new THREE.Mesh(new THREE.PlaneGeometry(3.1,1.07),
+      new THREE.MeshBasicMaterial({map:makeSignTexture(def),transparent:true}));
+    sign.position.set(0,2.62,D/2+0.14);g.add(sign);
+    rec.signMesh=sign;
+    // Neonkanten
+    if(def.neon){
+      const nm=new THREE.MeshBasicMaterial({color:def.accent});
+      rec.neonMats.push(nm);
+      [[-W/2-0.08,D/2+0.04],[W/2+0.08,D/2+0.04]].forEach(p=>{
+        const strip=new THREE.Mesh(boxGeo(0.14,H,0.14),nm);
+        strip.position.set(p[0],H/2,p[1]);g.add(strip);
+      });
+      const topStrip=new THREE.Mesh(boxGeo(W+0.3,0.14,0.14),nm);
+      topStrip.position.set(0,H+0.34,D/2+0.04);g.add(topStrip);
+      if(neonLightCount<5){
+        rec.light=new THREE.PointLight(def.accent,0,16,2);
+        rec.light.position.set(0,3,D/2+2);g.add(rec.light);
+        neonLightCount++;
+      }
+    }
+    // Markise
+    if(def.awning){
+      const aw=new THREE.Mesh(new THREE.PlaneGeometry(2.6,1.3),
+        new THREE.MeshStandardMaterial({map:makeAwningTexture(def.accent),side:THREE.DoubleSide,roughness:.9}));
+      aw.position.set(0,2,D/2+0.6);aw.rotation.x=-0.5;aw.castShadow=true;g.add(aw);
+    }
+    // Schornstein & Rauch
+    if(def.chimney){
+      const ch=new THREE.Mesh(boxGeo(0.5,0.9,0.5),new THREE.MeshStandardMaterial({color:0x9a5b4a,roughness:.9}));
+      ch.position.set(W/2-0.8,H+0.6,-D/2+0.9);g.add(ch);
+      const smokeMat=new THREE.MeshStandardMaterial({color:0xd8d8d8,transparent:true,opacity:.5,roughness:1});
+      for(let s=0;s<4;s++){
+        const puff=new THREE.Mesh(new THREE.SphereGeometry(0.24,8,6),smokeMat.clone());
+        puff.position.set(W/2-0.8,H+1,-D/2+0.9);
+        puff.userData.t=s/4;
+        puff.userData.baseY=H+1;
+        g.add(puff);rec.smoke.push(puff);
+      }
+    }
+    // Außentische
+    if(def.tables){
+      const topMat=new THREE.MeshStandardMaterial({color:0xe8e0cc,roughness:.8});
+      const legMat=new THREE.MeshStandardMaterial({color:0x4a4a4a,roughness:.6});
+      [[-1.7,D/2+1.35],[1.7,D/2+1.35]].forEach(p=>{
+        const top=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,0.07,12),topMat);
+        top.position.set(p[0],0.78,p[1]);top.castShadow=true;g.add(top);
+        const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.07,0.78,6),legMat);
+        leg.position.set(p[0],0.39,p[1]);g.add(leg);
+        for(let st=0;st<2;st++){
+          const stool=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.45,8),legMat);
+          stool.position.set(p[0]+(st?0.75:-0.75),0.22,p[1]+rand(-0.15,0.15));g.add(stool);
+        }
+      });
+    }
+  }
+  g.traverse(o=>{if(o.isMesh){o.userData.venue=i;}});
+  pickMeshes.push(g);
+  scene.add(g);
+  buildings[i]=rec;
+  return rec;
+}
+function rebuildBuilding(i){
+  const old=buildings[i];
+  if(old){
+    scene.remove(old.group);
+    if(old.light)neonLightCount--;
+    const idx=pickMeshes.indexOf(old.group);
+    if(idx>=0)pickMeshes.splice(idx,1);
+  }
+  const rec=buildBuilding(i);
+  rec.pop=1; // kleine Aufploppanimation
+  return rec;
+}
+function addBuildingAnimated(i){
+  buildEnvironment();
+  const rec=buildBuilding(i);
+  rec.anim={t:0}; // wächst aus dem Boden
+  rec.group.scale.set(0.01,0.01,0.01);
+  focusX=i*SPACING;
+}
+
+/* ---------- Menschen ---------- */
+const PEOPLE_MAX=60;
+let people=[],personGeo=null,personParts=null;
+const bodyPalette=[0xe36a6a,0x6a9ee3,0x6ac98f,0xe3b56a,0xb08fe0,0xe08fc2,0x8fd3e0,0xd3e08f,0xe0a58f,0x9fb3c8,0x7fc9b0,0xc97f7f];
+const skinTones=[0xf5d0a9,0xe8b98a,0xc98d5f,0x8d5f3f];
+let bodyMats,skinMats,hatMats;
+let rushVenue=-1,rushUntil=0;
+function initPeople(){
+  personParts={
+    body:new THREE.CapsuleGeometry(0.21,0.42,3,8),
+    head:new THREE.SphereGeometry(0.165,10,8),
+    hat:new THREE.CylinderGeometry(0.19,0.19,0.14,10),
+    brim:new THREE.CylinderGeometry(0.27,0.27,0.035,10),
+  };
+  bodyMats=bodyPalette.map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.8}));
+  skinMats=skinTones.map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.7}));
+  hatMats=[0x3a3f4a,0xc9564a,0x4a7fc9,0xe0c04a].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.8}));
+}
+function makePerson(){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(personParts.body,bodyMats[randI(0,bodyMats.length-1)]);
+  body.position.y=0.52;body.castShadow=true;g.add(body);
+  const head=new THREE.Mesh(personParts.head,skinMats[randI(0,skinMats.length-1)]);
+  head.position.y=1.0;g.add(head);
+  if(Math.random()<0.33){
+    const hm=hatMats[randI(0,hatMats.length-1)];
+    const hat=new THREE.Mesh(personParts.hat,hm);hat.position.y=1.16;g.add(hat);
+    const brim=new THREE.Mesh(personParts.brim,hm);brim.position.y=1.1;g.add(brim);
+  }
+  const s=rand(0.85,1.12);g.scale.set(s,s,s);
+  scene.add(g);
+  return g;
+}
+function targetCount(){
+  return clamp(6+S.venues.length*4+Math.floor(Math.log10(Math.max(10,S.lifeEarned))),8,PEOPLE_MAX);
+}
+let spawnCooldown=0;
+function spawnPerson(){
+  const owned=S.venues.length;
+  let vi=randI(0,owned-1);
+  if(rushUntil>S.gameTime&&Math.random()<0.6)vi=rushVenue;
+  const fromLeft=Math.random()<0.5;
+  const spawnX=fromLeft?-20:owned*SPACING+12;
+  const doorX=vi*SPACING,sideZ=rand(3.2,4.6);
+  const p={
+    g:makePerson(),speed:rand(1.3,2.2),state:'walk',venue:vi,
+    wp:[[doorX+rand(-0.4,0.4),2.6]],timer:0,bob:Math.random()*10,exitX:Math.random()<0.5?-20:owned*SPACING+12,
+  };
+  p.g.position.set(spawnX,0,sideZ);
+  p.wp.unshift([doorX+rand(-1.5,1.5),sideZ]);
+  people.push(p);
+}
+function updatePeople(dt){
+  spawnCooldown-=dt;
+  const want=targetCount();
+  if(people.length<want&&spawnCooldown<=0){
+    spawnPerson();
+    spawnCooldown=(rushUntil>S.gameTime)?rand(0.1,0.35):rand(0.3,1.0);
+  }
+  const night=nightFactor()>0.55;
+  for(let i=people.length-1;i>=0;i--){
+    const p=people[i];p.bob+=dt*9*p.speed;
+    if(p.state==='walk'||p.state==='leave'){
+      const wp=p.wp[0];
+      if(!wp){
+        if(p.state==='leave'){scene.remove(p.g);people.splice(i,1);continue;}
+        // Tür erreicht
+        const def=getDef(p.venue);
+        if(night&&def.dance&&Math.random()<0.75){
+          p.state='dance';p.timer=rand(5,14);
+          p.dx=p.g.position.x+rand(-2.2,2.2);p.dz=rand(3.2,4.8);
+        }else{
+          p.state='inside';p.timer=rand(3,9);p.g.visible=false;
+        }
+        continue;
+      }
+      const dx=wp[0]-p.g.position.x,dz=wp[1]-p.g.position.z;
+      const dist=Math.hypot(dx,dz);
+      if(dist<0.15){p.wp.shift();continue;}
+      const mv=Math.min(dist,p.speed*dt);
+      p.g.position.x+=dx/dist*mv;p.g.position.z+=dz/dist*mv;
+      p.g.position.y=Math.abs(Math.sin(p.bob))*0.07;
+      p.g.rotation.y=Math.atan2(dx,dz);
+    }else if(p.state==='inside'){
+      p.timer-=dt;
+      if(p.timer<=0){
+        p.g.visible=true;p.state='leave';
+        spawnBubble(p.g.position.x,1.6,p.g.position.z);
+        p.wp=[[p.g.position.x+rand(-1,1),rand(3.2,4.6)],[p.exitX,rand(3.2,4.6)]];
+      }
+    }else if(p.state==='dance'){
+      p.timer-=dt;
+      p.g.position.y=Math.abs(Math.sin(p.bob*1.6))*0.22;
+      p.g.rotation.y+=Math.sin(p.bob*0.7)*dt*2.5;
+      if(p.timer<=0){
+        p.state='leave';
+        if(Math.random()<0.5)spawnBubble(p.g.position.x,1.6,p.g.position.z);
+        p.wp=[[p.exitX,rand(3.2,4.6)]];
+      }
+    }
+  }
+}
+
+/* ---------- Partikel: Geld, Konfetti, Sprechblasen ---------- */
+let moneySprites=[],confetti=[],bubbles=[];
+let moneyTex,bubbleTexCache={};
+function makeTextTexture(txt,size,color){
+  const c=document.createElement('canvas');c.width=c.height=128;
+  const g=c.getContext('2d');
+  g.font='bold '+size+'px sans-serif';g.textAlign='center';g.textBaseline='middle';
+  if(color){g.fillStyle=color;g.shadowColor='rgba(0,0,0,0.4)';g.shadowBlur=6;}
+  g.fillText(txt,64,68);
+  return new THREE.CanvasTexture(c);
+}
+function initParticles(){
+  moneyTex=makeTextTexture('+€',72,'#7ede97');
+  for(let i=0;i<36;i++){
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:moneyTex,transparent:true,opacity:0,depthWrite:false}));
+    s.scale.set(1.1,1.1,1);s.userData.life=-1;scene.add(s);moneySprites.push(s);
+  }
+  const confGeo=new THREE.PlaneGeometry(0.2,0.13);
+  const confMats=[0xe8b84b,0x6fd58a,0x6a9ee3,0xe36a6a,0xb08fe0,0xf5f0e0].map(c=>
+    new THREE.MeshBasicMaterial({color:c,side:THREE.DoubleSide,transparent:true}));
+  for(let i=0;i<110;i++){
+    const m=new THREE.Mesh(confGeo,confMats[i%confMats.length]);
+    m.visible=false;m.userData={life:-1};scene.add(m);confetti.push(m);
+  }
+  const bubEmoji=['🍕','❤️','🍹','🎉','😋','👍','🥨','🍷'];
+  bubEmoji.forEach(e=>{bubbleTexCache[e]=makeTextTexture(e,80);});
+  for(let i=0;i<16;i++){
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,opacity:0,depthWrite:false}));
+    s.scale.set(0.9,0.9,1);s.userData.life=-1;scene.add(s);bubbles.push(s);
+  }
+}
+const lastMoneyPart={};
+function spawnMoney(vi){
+  const now=S.gameTime;
+  if(lastMoneyPart[vi]&&now-lastMoneyPart[vi]<0.55)return;
+  lastMoneyPart[vi]=now;
+  const s=moneySprites.find(x=>x.userData.life<0);if(!s)return;
+  s.position.set(vi*SPACING+rand(-1,1),3+rand(0,1),2.8);
+  s.userData.life=1.3;s.material.opacity=1;
+}
+function spawnBubble(x,y,z){
+  const s=bubbles.find(b=>b.userData.life<0);if(!s)return;
+  const keys=Object.keys(bubbleTexCache);
+  s.material.map=bubbleTexCache[keys[randI(0,keys.length-1)]];
+  s.material.needsUpdate=true;
+  s.position.set(x,y,z);s.userData.life=1.4;s.material.opacity=1;
+}
+function spawnConfetti(vi){
+  const bx=vi*SPACING;
+  const rec=buildings[vi];
+  const topY=rec?((rec.def.floors||1)+rec.extraFloors)*2.25+1:5;
+  let n=0;
+  for(const m of confetti){
+    if(m.userData.life>=0)continue;
+    m.visible=true;
+    m.position.set(bx+rand(-2.5,2.5),topY+rand(0,1.5),rand(0.5,3.5));
+    m.userData={life:rand(1.8,2.8),vx:rand(-1.5,1.5),vy:rand(2,5),vz:rand(-0.5,1.5),
+      rx:rand(-4,4),rz:rand(-4,4)};
+    if(++n>=70)break;
+  }
+}
+function updateParticles(dt){
+  for(const s of moneySprites){
+    if(s.userData.life<0)continue;
+    s.userData.life-=dt;s.position.y+=dt*1.6;
+    s.material.opacity=clamp(s.userData.life/0.6,0,1);
+    if(s.userData.life<0)s.material.opacity=0;
+  }
+  for(const s of bubbles){
+    if(s.userData.life<0)continue;
+    s.userData.life-=dt;s.position.y+=dt*1.1;
+    s.material.opacity=clamp(s.userData.life/0.5,0,1);
+    if(s.userData.life<0)s.material.opacity=0;
+  }
+  for(const m of confetti){
+    if(m.userData.life<0)continue;
+    const u=m.userData;u.life-=dt;
+    if(u.life<0){m.visible=false;continue;}
+    u.vy-=dt*6;
+    m.position.x+=u.vx*dt;m.position.y+=u.vy*dt;m.position.z+=u.vz*dt;
+    if(m.position.y<0.1){m.position.y=0.1;u.vy=0;u.vx*=0.9;u.vz*=0.9;}
+    m.rotation.x+=u.rx*dt;m.rotation.z+=u.rz*dt;
+    m.material.opacity=clamp(u.life,0,1);
+  }
+}
+
+/* ---------- Tag & Nacht ---------- */
+function dayT(){return (S.gameTime%DAY_LEN)/DAY_LEN;}
+function sunElev(){return Math.sin((dayT()-0.25)*Math.PI*2);}
+function nightFactor(){return clamp(-sunElev()*1.6,0,1);}
+const tmpCol=new THREE.Color();
+function updateDayNight(){
+  const e=sunElev();
+  const L=clamp(e*1.5,0,1),N=nightFactor();
+  skyCol.copy(C.night).lerp(C.day,L);
+  const dawn=clamp(1-Math.abs(e)/0.3,0,1)*0.55;
+  skyCol.lerp(C.dawn,dawn);
+  scene.background=skyCol;
+  scene.fog.color.copy(skyCol);
+  const a=(dayT()-0.25)*Math.PI*2;
+  sun.position.set(focusX+Math.cos(a)*70,Math.max(8,Math.sin(a)*70),30);
+  sun.target.position.set(focusX,0,4);
+  sun.intensity=0.12+L*1.05;
+  tmpCol.copy(C.sunLow).lerp(C.sunDay,L);sun.color.copy(tmpCol);
+  hemi.intensity=0.22+L*0.68;
+  starMat.opacity=N*0.9;
+  const t=S.gameTime;
+  for(const spr of lampGlows)spr.material.opacity=N*0.55;
+  for(const h of lampHeads)h.material.emissiveIntensity=N*1.2;
+  for(const rec of buildings){
+    if(!rec)continue;
+    if(rec.winMat)rec.winMat.emissiveIntensity=N*(0.75+0.2*Math.sin(t*0.7+rec.group.position.x));
+    for(const nm of rec.neonMats){
+      const pulse=0.55+0.45*Math.sin(t*3.2+rec.group.position.x*0.7);
+      tmpCol.set(rec.def.accent).multiplyScalar(0.25+N*pulse*0.95);
+      nm.color.copy(tmpCol);
+    }
+    if(rec.light)rec.light.intensity=N*(1.1+0.8*Math.sin(t*3.2+rec.group.position.x*0.7));
+  }
+}
+
+/* ---------- Kamera ---------- */
+let focusX=0,camX=0,theta=0.32,phi=0.46,radius=27,lastInput=0,camPunch=0;
+function updateCamera(dt){
+  camX=lerp(camX,focusX,Math.min(1,dt*2.4));
+  if(performance.now()-lastInput>8000)theta+=Math.sin(performance.now()*0.00006)*dt*0.012;
+  camPunch=Math.max(0,camPunch-dt*2.2);
+  const r=radius*(1-camPunch*0.05);
+  const tx=camX,ty=2.4,tz=1.5;
+  camera.position.set(
+    tx+r*Math.sin(theta)*Math.cos(phi),
+    ty+r*Math.sin(phi),
+    tz+r*Math.cos(theta)*Math.cos(phi));
+  camera.lookAt(tx,ty,tz);
+}
+function initCameraControls(){
+  const el=renderer.domElement;
+  let down=false,sx=0,sy=0,moved=0,downT=0;
+  el.addEventListener('pointerdown',e=>{down=true;sx=e.clientX;sy=e.clientY;moved=0;downT=performance.now();lastInput=performance.now();el.setPointerCapture(e.pointerId);});
+  el.addEventListener('pointermove',e=>{
+    if(!down)return;
+    const dx=e.clientX-sx,dy=e.clientY-sy;sx=e.clientX;sy=e.clientY;
+    moved+=Math.abs(dx)+Math.abs(dy);
+    theta-=dx*0.0055;phi=clamp(phi+dy*0.004,0.18,1.15);
+    lastInput=performance.now();
+  });
+  el.addEventListener('pointerup',e=>{
+    down=false;
+    if(moved<6&&performance.now()-downT<400)handleTap(e);
+  });
+  el.addEventListener('wheel',e=>{
+    radius=clamp(radius*(1+e.deltaY*0.0011),13,64);lastInput=performance.now();
+  },{passive:true});
+}
+const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+function handleTap(e){
+  pointer.x=(e.clientX/innerWidth)*2-1;
+  pointer.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const hits=raycaster.intersectObjects(pickMeshes,true);
+  for(const h of hits){
+    const vi=h.object.userData.venue;
+    if(vi===undefined)continue;
+    clickBoost(vi);
+    return;
+  }
+}
+function clickBoost(vi){
+  const v=S.venues[vi];if(!v)return;
+  const st=venueStats(vi);
+  if(st.continuous)earn(st.rate*1.2,vi,true);
+  else v.prog=Math.min(v.prog+0.22,1.6);
+  const rec=buildings[vi];if(rec)rec.pop=Math.max(rec.pop,0.65);
+  spawnMoney(vi);sndCash();
+}
+
+/* ---------- Gebäude-Animationen ---------- */
+function updateBuildingAnims(dt){
+  for(const rec of buildings){
+    if(!rec)continue;
+    if(rec.anim){
+      rec.anim.t+=dt*1.4;
+      const t=rec.anim.t;
+      if(t>=1){rec.group.scale.set(1,1,1);rec.anim=null;}
+      else{
+        const s=1+Math.sin(t*Math.PI)*0.06;
+        const y=t<0.7?t/0.7:1;
+        const ease=1-Math.pow(1-y,3);
+        rec.group.scale.set(ease*s,ease,ease*s);
+      }
+    }
+    if(rec.pop>0){
+      rec.pop=Math.max(0,rec.pop-dt*2.4);
+      const s=1+Math.sin(rec.pop*Math.PI)*0.07;
+      if(!rec.anim)rec.group.scale.set(s,2-s,s);
+    }
+    for(const puff of rec.smoke){
+      puff.userData.t+=dt*0.3;
+      if(puff.userData.t>1)puff.userData.t-=1;
+      const pt=puff.userData.t;
+      puff.position.y=puff.userData.baseY+pt*2.6;
+      puff.material.opacity=0.45*(1-pt);
+      const sc=0.7+pt*1.4;puff.scale.set(sc,sc,sc);
+    }
+  }
+  for(const c of clouds){
+    c.position.x+=c.userData.spd*dt;
+    if(c.position.x>envMaxX+40)c.position.x=-50;
+  }
+}
+
+/* ============================================================
+   ÖKONOMIE
+   ============================================================ */
+function earn(amount,vi,burst){
+  S.money+=amount;S.runEarned+=amount;S.lifeEarned+=amount;
+  if(burst){spawnMoney(vi);if(Math.random()<0.35)sndCash();}
+}
+function tickEconomy(dt){
+  for(let i=0;i<S.venues.length;i++){
+    const v=S.venues[i];
+    const st=venueStats(i);
+    if(st.continuous){
+      earn(st.rate*dt,i,false);
+      v.prog=(v.prog+dt/Math.max(st.time,0.05))%1;
+      if(Math.random()<dt*1.4)spawnMoney(i);
+    }else{
+      v.prog+=dt/st.time;
+      if(v.prog>=1){
+        const cycles=Math.floor(v.prog);
+        v.prog-=cycles;
+        earn(st.rev*cycles,i,true);
+      }
+    }
+  }
+  if(S.venues.length>=2&&S.gameTime>nextEventAt){
+    if(nextEventAt===0)nextEventAt=S.gameTime+75;
+    else{spawnEvent();nextEventAt=S.gameTime+rand(130,300);}
+  }
+}
+function applyOffline(seconds){
+  const s=Math.min(seconds,86400);
+  events=[];bannerEvent=null;bannerEl.classList.remove('show');
+  let total=0;
+  for(let i=0;i<S.venues.length;i++){
+    const v=S.venues[i],st=venueStats(i);
+    if(st.continuous){total+=st.rate*s;}
+    else{
+      const elapsed=v.prog*st.time+s;
+      const cycles=Math.floor(elapsed/st.time);
+      v.prog=(elapsed-cycles*st.time)/st.time;
+      total+=cycles*st.rev;
+    }
+  }
+  if(total>0){
+    S.money+=total;S.runEarned+=total;S.lifeEarned+=total;
+  }
+  return total;
+}
+
+/* ---------- Kaufen ---------- */
+function tryBuyLevels(i){
+  const v=S.venues[i];if(!v)return;
+  let n=buyCount(i);
+  let cost=levelCost(i,n);
+  if(S.money<cost){
+    if(S.buyAmt!=='max')return;
+    n=maxAffordable(i);if(n<1)return;
+    cost=levelCost(i,n);
+  }
+  const before=msCount(v.lvl);
+  S.money-=cost;v.lvl+=n;
+  sndBuy();
+  const after=msCount(v.lvl);
+  if(after>before)celebrateMilestone(i);
+  else{const rec=buildings[i];if(rec)rec.pop=Math.max(rec.pop,0.5);}
+  refreshCard(i);
+}
+function celebrateMilestone(i){
+  const d=getDef(i),v=S.venues[i];
+  const extra=Math.min(msCount(v.lvl),3);
+  if(buildings[i]&&extra!==buildings[i].extraFloors&&!d.truck)rebuildBuilding(i);
+  else if(buildings[i])buildings[i].pop=1;
+  spawnConfetti(i);
+  camPunch=1;
+  sndMilestone();
+  const st=venueStats(i);
+  toast(d.emoji+' <b>'+d.name+'</b> Level '+v.lvl+' – Bonus freigeschaltet! '+(st.continuous?'Läuft jetzt durchgehend!':'×2!'));
+}
+function tryUnlock(){
+  const i=S.venues.length;
+  const d=getDef(i);
+  if(S.money<d.cost)return;
+  S.money-=d.cost;
+  S.venues.push({lvl:1,prog:0});
+  addBuildingAnimated(i);
+  sndUnlock();
+  toast(d.emoji+' <b>'+d.name+'</b> eröffnet!');
+  buildPanel();
+}
+
+/* ---------- Prestige ---------- */
+function starsGain(){return Math.floor(Math.pow(S.runEarned/1e10,0.5));}
+function doPrestige(){
+  const gain=starsGain();
+  if(gain<1)return;
+  S.stars+=gain;S.prestiges++;
+  S.money=0;S.runEarned=0;
+  S.venues=[{lvl:1,prog:0}];
+  events=[];bannerEvent=null;bannerEl.classList.remove('show');nextEventAt=0;
+  // Szene zurücksetzen
+  for(const rec of buildings){if(rec)scene.remove(rec.group);}
+  buildings=[];pickMeshes=[];neonLightCount=0;
+  for(const p of people)scene.remove(p.g);
+  people=[];
+  buildBuilding(0);
+  focusX=0;
+  buildPanel();
+  closeModal();
+  sndUnlock();
+  toast('⭐ Neueröffnung! +'+fmt(gain)+' Michelin-Sterne – Einkommen jetzt ×'+starMult().toLocaleString('de-DE',{maximumFractionDigits:2}));
+  save();
+}
+
+/* ============================================================
+   UI
+   ============================================================ */
+const elMoney=document.getElementById('money'),elRate=document.getElementById('rate'),
+      elStars=document.getElementById('starsInfo'),panelInner=document.getElementById('panelInner'),
+      modalWrap=document.getElementById('modalWrap'),modal=document.getElementById('modal');
+let dispMoney=0,cards=[],lockedCard=null,uiTimer=0;
+
+function buildPanel(){
+  panelInner.innerHTML='';cards=[];lockedCard=null;
+  for(let i=0;i<S.venues.length;i++)panelInner.appendChild(makeCard(i));
+  panelInner.appendChild(makeLockedCard());
+}
+function makeCard(i){
+  const d=getDef(i);
+  const card=document.createElement('div');card.className='card';
+  card.innerHTML=
+    '<div class="crow"><span class="cemoji">'+d.emoji+'</span>'+
+    '<div class="cinfo"><div class="cname">'+d.name+'</div><div class="csub"></div></div>'+
+    '<div class="cearn"><div class="val"></div><div class="per"></div></div></div>'+
+    '<div class="pbar"><div class="pfill"></div><div class="shine"></div></div>'+
+    '<button class="buy"><span class="lbl"></span><span class="cost"></span></button>'+
+    '<div class="mshint"></div>';
+  const refs={card,sub:card.querySelector('.csub'),val:card.querySelector('.val'),
+    per:card.querySelector('.per'),fill:card.querySelector('.pfill'),
+    buy:card.querySelector('.buy'),lbl:card.querySelector('.lbl'),
+    cost:card.querySelector('.cost'),hint:card.querySelector('.mshint')};
+  refs.buy.addEventListener('click',e=>{e.stopPropagation();tryBuyLevels(i);});
+  card.addEventListener('click',()=>{focusX=i*SPACING;});
+  cards[i]=refs;
+  refreshCard(i);
+  return card;
+}
+function refreshCard(i){
+  const r=cards[i];if(!r)return;
+  const d=getDef(i),v=S.venues[i],st=venueStats(i);
+  r.sub.textContent='Level '+v.lvl.toLocaleString('de-DE');
+  if(st.continuous){
+    r.val.textContent=fmt(st.rate)+' €';
+    r.per.textContent='pro Sekunde';
+    r.fill.classList.add('continuous');
+  }else{
+    r.val.textContent=fmt(st.rev)+' €';
+    r.per.textContent='alle '+fmtT(st.time);
+    r.fill.classList.remove('continuous');
+  }
+  const n=buyCount(i),cost=levelCost(i,Math.max(1,n));
+  r.lbl.textContent='Ausbauen'+(S.buyAmt==='max'?' Max':(n>1?' ×'+n:''));
+  r.cost.textContent=fmt(cost)+' €';
+  r.buy.disabled=S.money<levelCost(i,S.buyAmt==='max'?1:n);
+  const nm=nextMs(v.lvl);
+  r.hint.innerHTML='Nächster Bonus bei Level <b>'+nm.toLocaleString('de-DE')+'</b> ('+(nm-v.lvl).toLocaleString('de-DE')+' fehlen)';
+}
+function makeLockedCard(){
+  const i=S.venues.length,d=getDef(i);
+  const card=document.createElement('div');card.className='card locked';
+  card.innerHTML=
+    '<div class="crow"><span class="cemoji">'+d.emoji+'</span>'+
+    '<div class="cinfo"><div class="cname">'+d.name+'</div><div class="csub">'+d.desc+'</div></div></div>'+
+    '<button class="buy unlock"><span>Eröffnen</span><span class="cost">'+fmt(d.cost)+' €</span></button>';
+  const btn=card.querySelector('.buy');
+  btn.addEventListener('click',e=>{e.stopPropagation();tryUnlock();});
+  lockedCard={btn,cost:d.cost};
+  return card;
+}
+function uiFrame(dt){
+  // Geld weich hochzählen
+  const diff=S.money-dispMoney;
+  dispMoney=Math.abs(diff)<Math.max(1,S.money*1e-6)?S.money:dispMoney+diff*Math.min(1,dt*7);
+  elMoney.textContent=fmt(dispMoney)+' €';
+  // Fortschrittsbalken jede Frame
+  for(let i=0;i<S.venues.length;i++){
+    const r=cards[i];if(!r)continue;
+    if(!r.fill.classList.contains('continuous'))
+      r.fill.style.transform='scaleX('+clamp(S.venues[i].prog,0,1)+')';
+  }
+  uiTimer-=dt;
+  if(uiTimer<=0){
+    uiTimer=0.18;
+    elRate.innerHTML='<b>'+fmt(totalRate())+' €</b> pro Sekunde';
+    if(S.stars>0){
+      elStars.style.display='block';
+      elStars.textContent='★ '+fmt(S.stars)+' Michelin-Sterne (+'+fmt(S.stars*2)+' % Einkommen)';
+    }
+    for(let i=0;i<S.venues.length;i++)refreshCard(i);
+    if(lockedCard)lockedCard.btn.disabled=S.money<lockedCard.cost;
+    const gain=starsGain();
+    const bp=document.getElementById('btnPrestige');
+    bp.classList.toggle('ready',gain>=Math.max(10,S.stars*0.5));
+    bp.textContent=gain>0?'⭐ +'+fmt(gain):'⭐';
+    updateBanner();
+  }
+}
+
+/* ---------- Modals ---------- */
+function openModal(html){modal.innerHTML=html;modalWrap.classList.add('show');}
+function closeModal(){modalWrap.classList.remove('show');}
+modalWrap.addEventListener('click',e=>{if(e.target===modalWrap)closeModal();});
+function showOfflineModal(total,secs){
+  const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60);
+  const dur=h>0?h+' Std. '+m+' Min.':m>0?m+' Min.':Math.round(secs)+' Sek.';
+  openModal('<h2>Willkommen zurück! 👋</h2>'+
+    '<p class="center">Deine Betriebe haben in deiner Abwesenheit ('+dur+') fleißig weitergearbeitet:</p>'+
+    '<div class="big">+'+fmt(total)+' €</div>'+
+    '<button class="mbtn primary" onclick="closeModal()">Einsammeln 💰</button>');
+}
+function showPrestigeModal(){
+  const gain=starsGain();
+  openModal('<h2>⭐ Neueröffnung</h2>'+
+    '<p>Verkaufe dein gesamtes Imperium und starte mit frischem Ruhm neu: Du erhältst <b style="color:var(--gold-soft)">Michelin-Sterne</b>, die dein Einkommen dauerhaft um <b>+2&nbsp;% pro Stern</b> steigern – für immer, über alle Neustarts hinweg.</p>'+
+    '<p>Aktuell: ★ '+fmt(S.stars)+' Sterne (+'+fmt(S.stars*2)+' %)</p>'+
+    '<div class="big">Jetzt: +'+fmt(gain)+' Sterne</div>'+
+    (gain<1?'<p class="center">Verdiene mehr Geld in diesem Durchlauf, um Sterne zu erhalten. Sterne wachsen mit dem Gesamtverdienst des Durchlaufs.</p>':'')+
+    '<button class="mbtn primary" '+(gain<1?'disabled':'')+' onclick="doPrestige()">Neueröffnung! ⭐</button>'+
+    '<button class="mbtn ghost" onclick="closeModal()">Abbrechen</button>'+
+    '<br><button class="danger" onclick="hardReset()">Spielstand komplett löschen</button>');
+}
+function hardReset(){
+  if(!confirm('Wirklich ALLES löschen? Auch deine Michelin-Sterne gehen verloren.'))return;
+  localStorage.removeItem(SAVE_KEY);
+  location.reload();
+}
+function showHelpModal(){
+  openModal('<h2>🍽️ Gastro-Imperium</h2>'+
+    '<p><b>Alles läuft von selbst.</b> Deine Betriebe verdienen automatisch Geld – auch wenn du weg bist. Kein Echtgeld, keine Käufe, nur Spielspaß.</p>'+
+    '<p>💶 <b>Ausbauen:</b> Investiere Einnahmen in Level. Bei Level 10, 25, 50, 100, 200 … gibt es dicke Boni (doppeltes Tempo oder doppelter Gewinn) und deine Gebäude wachsen.</p>'+
+    '<p>🏪 <b>Eröffnen:</b> Spare auf neue Betriebe – vom Imbiss bis zur Großraumdisko und weit, weit darüber hinaus. Es gibt kein Ende.</p>'+
+    '<p>⭐ <b>Neueröffnung:</b> Später kannst du neu starten und erhältst Michelin-Sterne, die dein Einkommen für immer erhöhen.</p>'+
+    '<p>🖱️ <b>Steuerung:</b> Ziehen dreht die Kamera, Scrollen zoomt. Klick auf ein Gebäude gibt einen kleinen Schub. Oben rechts stellst du die Kaufmenge (×1/×10/×100/Max) um.</p>'+
+    '<button class="mbtn primary" onclick="closeModal()">Los geht\'s!</button>');
+}
+window.closeModal=closeModal;window.doPrestige=doPrestige;window.hardReset=hardReset;
+
+/* ---------- Controls ---------- */
+const buyAmts=[1,10,100,'max'];
+document.getElementById('btnBuyAmt').addEventListener('click',()=>{
+  const idx=(buyAmts.indexOf(S.buyAmt)+1)%buyAmts.length;
+  S.buyAmt=buyAmts[idx];
+  document.getElementById('btnBuyAmt').textContent=S.buyAmt==='max'?'Max':'×'+S.buyAmt;
+  for(let i=0;i<S.venues.length;i++)refreshCard(i);
+});
+document.getElementById('btnMute').addEventListener('click',()=>{
+  S.muted=!S.muted;
+  document.getElementById('btnMute').textContent=S.muted?'🔇':'🔊';
+});
+document.getElementById('btnHelp').addEventListener('click',showHelpModal);
+document.getElementById('btnPrestige').addEventListener('click',showPrestigeModal);
+document.addEventListener('pointerdown',()=>{ensureAudio();if(ac&&ac.state==='suspended')ac.resume();});
+
+/* ============================================================
+   START & HAUPTSCHLEIFE
+   ============================================================ */
+S=load();
+const isNew=!localStorage.getItem(SAVE_KEY);
+initThree();
+if(webglOk){
+  for(let i=0;i<S.venues.length;i++)buildBuilding(i);
+  buildEnvironment();
+  focusX=camX=Math.max(0,(S.venues.length-1))*SPACING*0.5;
+  initCameraControls();
+}else{
+  document.getElementById('scene').innerHTML='<div style="padding:100px 30px;text-align:center;color:#889">3D wird von diesem Browser nicht unterstützt – das Spiel läuft trotzdem weiter!</div>';
+}
+document.getElementById('btnBuyAmt').textContent=S.buyAmt==='max'?'Max':'×'+S.buyAmt;
+document.getElementById('btnMute').textContent=S.muted?'🔇':'🔊';
+buildPanel();
+dispMoney=S.money;
+
+// Offline-Verdienst beim Laden
+{
+  const away=(Date.now()-S.lastSeen)/1000;
+  if(!isNew&&away>60){
+    const total=applyOffline(away);
+    if(total>0)showOfflineModal(total,away);
+  }
+}
+if(isNew)setTimeout(showHelpModal,600);
+
+setInterval(save,10000);
+window.addEventListener('beforeunload',save);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)save();});
+
+let last=performance.now(),perfT=0,perfF=0,perfDone=false;
+function frame(now){
+  requestAnimationFrame(frame);
+  let dt=(now-last)/1000;last=now;
+  if(webglOk&&!perfDone&&dt<5){
+    perfF++;perfT+=dt;
+    if(perfT>6){
+      perfDone=true;
+      if(perfF/perfT<24){ // schwache GPU: Auflösung & Schatten reduzieren
+        renderer.setPixelRatio(1);
+        sun.castShadow=false;
+        renderer.shadowMap.autoUpdate=false;
+      }
+    }
+  }
+  if(dt>15){ // Tab war lange im Hintergrund
+    const total=applyOffline(dt);
+    if(dt>90&&total>0)showOfflineModal(total,dt);
+    dt=0.05;
+  }
+  dt=Math.min(dt,0.5);
+  S.gameTime+=dt;
+  tickEconomy(dt);
+  if(webglOk){
+    updatePeople(dt);
+    updateParticles(dt);
+    updateBuildingAnims(dt);
+    updateDayNight();
+    updateCamera(dt);
+    renderer.render(scene,camera);
+  }
+  uiFrame(dt);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
