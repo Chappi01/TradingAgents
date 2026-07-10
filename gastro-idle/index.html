@@ -228,10 +228,11 @@ function freshState(){
     gameTime:DAY_LEN*0.32,lastSeen:Date.now(),muted:false,buyAmt:1,
     venues:[{lvl:1,prog:0}]};
 }
+function storeGet(){try{return localStorage.getItem(SAVE_KEY);}catch(e){return null;}}
 function save(){try{S.lastSeen=Date.now();localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}}
 function load(){
   try{
-    const raw=localStorage.getItem(SAVE_KEY);
+    const raw=storeGet();
     if(!raw)return freshState();
     const s=JSON.parse(raw);
     if(!s.venues||!s.venues.length)return freshState();
@@ -1196,7 +1197,7 @@ function showPrestigeModal(){
 }
 function hardReset(){
   if(!confirm('Wirklich ALLES löschen? Auch deine Michelin-Sterne gehen verloren.'))return;
-  localStorage.removeItem(SAVE_KEY);
+  try{localStorage.removeItem(SAVE_KEY);}catch(e){}
   location.reload();
 }
 function showHelpModal(){
@@ -1230,7 +1231,7 @@ document.addEventListener('pointerdown',()=>{ensureAudio();if(ac&&ac.state==='su
    START & HAUPTSCHLEIFE
    ============================================================ */
 S=load();
-const isNew=!localStorage.getItem(SAVE_KEY);
+const isNew=!storeGet();
 initThree();
 if(webglOk){
   for(let i=0;i<S.venues.length;i++)buildBuilding(i);
