@@ -1,28 +1,55 @@
 # 🍽️ Gastro-Imperium
 
-Ein entspanntes 3D-Idle-Spiel rund um die Gastronomie: Vom Imbissstand über Café, Bar
-und Sternerestaurant bis zur Großraumdisko — und unendlich weiter.
+Ein hochwertiges 3D-Idle-Tycoon rund um die Gastronomie: Vom Imbisswagen über Pizzeria,
+Sushi-Bar und Kreuzfahrtschiff bis zum Flughafen, zur Megacity — und unendlich weiter.
 
 **Komplett kostenlos, kein Echtgeld, keine Werbung, kein Ende.** Nur zum Spielen und Zuschauen.
 
 ## Spielen
 
 Einfach **`index.html` doppelklicken** — das Spiel läuft direkt im Browser, komplett offline.
-(`three.min.js` muss im selben Ordner liegen.)
 
 ## Features
 
-- 🏙️ Low-Poly-3D-Straßenzeile mit kleinen Gästen, die zu deinen Betrieben laufen, an Tischen sitzen und nachts vor dem Club tanzen
-- 🌗 Tag/Nacht-Zyklus mit Neonlichtern, Straßenlaternen und Sternenhimmel
-- 📈 Alles läuft vollautomatisch — Fortschrittsbalken füllen sich von selbst
-- 🎉 Meilenstein-Boni (Level 10 / 25 / 50 / 100 / 200 …) mit Konfetti; Gebäude wachsen sichtbar mit
-- 🧐 Zufalls-Events (Foodkritiker, Happy Hour, Reisebus …) mit Einnahme-Boosts
-- ⭐ Prestige-System „Neueröffnung": Michelin-Sterne steigern das Einkommen dauerhaft
-- 💾 Autosave im Browser + Offline-Einnahmen, wenn du zurückkommst
-- 🔊 Dezenter, prozeduraler Sound (abschaltbar)
+- 🏙️ Stilisierte 3D-Welt mit 15 einzigartigen, handgebauten Betrieben (drehendes Riesenrad,
+  schaukelndes Kreuzfahrtschiff, rotierender Casino-Würfel, kreisendes Flugzeug …) und
+  danach unendlich vielen prozeduralen Expansionen
+- 🚶 Lebendige Straße: Gäste mit Ärmchen, Augen und Hüten, Personal vor den Betrieben,
+  Lieferautos, Drohnen, Vögel, Dampf, Konfetti, Trinkgeld-Münzen
+- 🌗 Tag/Nacht-Zyklus mit Sonne, Mond, Sternen, Neonlicht und Lichterketten
+- 👥 **Personal & Manager** je Betrieb (+30 % je Mitarbeiter, ×2,5 durch Manager) — sichtbar vor der Tür
+- 🔬 **Upgrade-Baum** mit 7 Familien und unendlichen Stufen: Kochtempo, Trinkgeld, Werbung,
+  Tempo, Deko (verschönert sichtbar die Straße), Lieferdienst, Drohnen
+- 😊 **Zufriedenheits-System**: Deko + Team steigern die Laune der Gäste = mehr Einkommen
+- 🏆 **Erfolge** mit unendlich generierten Stufen — jede gibt dauerhafte Boni
+- 🎉 Meilenstein-Boni (Level 10/25/50/100/200 …), Gebäude wachsen sichtbar mit
+- 🧐 Zufalls-Events (Foodkritiker, Happy Hour, Reisebus, Gastro-Preis …)
+- ⭐🥄 **Zwei Prestige-Ebenen**: Michelin-Sterne (+2 % je) und Goldene Löffel (Verdopplung je Löffel)
+- 💾 Autosave, Offline-Einnahmen, Spielstand-Export/-Import (⚙️-Menü)
+- 🎵 Prozedurale Lo-Fi-Hintergrundmusik + dezente Soundeffekte (WebAudio, keine Dateien)
+- ⚡ Adaptive Grafikqualität, korrektes sRGB-Farbmanagement, ACES-Tonemapping, weiche Schatten
 
 ## Steuerung
 
-- **Ziehen**: Kamera drehen · **Scrollen**: Zoomen
-- **Klick auf ein Gebäude**: kleiner Bonus-Schub
-- Oben rechts: Kaufmenge (×1/×10/×100/Max), Ton, Hilfe, Neueröffnung
+- **Ziehen**: Kamera drehen · **Scrollen**: Zoomen · **Klick auf Gebäude**: Bonus-Schub
+- Oben rechts: Kaufmenge (×1/×10/×100/Max), Einstellungen, Hilfe, Prestige
+- Panel-Tabs: 🏪 Betriebe · 🔬 Upgrades · 🏆 Boni
+
+## Projektstruktur
+
+| Datei | Verantwortung |
+|---|---|
+| `index.html` | Einstieg, lädt Module in fester Reihenfolge |
+| `css/style.css` | komplette UI-Gestaltung |
+| `js/util.js` | Formatierung, Mathe, Geometrie-Helfer (abgerundete Boxen) |
+| `js/data.js` | **Alle Spieldaten/Balancing**: Betriebe, Upgrades, Erfolge |
+| `js/state.js` | Spielstand, Save/Load, Migration, Export/Import (Cloud-vorbereitet) |
+| `js/economy.js` | Werte, Tick, Käufe, Events, Erfolge, 2-stufiges Prestige |
+| `js/audio.js` | prozedurale Musik + SFX |
+| `js/scene.js` | Renderer, Licht, Himmel, Umgebung, Kamera |
+| `js/fx.js` | Partikel (Geld, Münzen, Konfetti, Dampf, Sprechblasen) |
+| `js/actors.js` | Gäste, Personal-Figuren, Autos, Drohnen, Vögel |
+| `js/buildings.js` | 15 Gebäude-Baupläne + Animationen |
+| `js/ui.js` | HUD, Tabs, Karten, Modals, Toasts |
+| `js/main.js` | Start & Hauptschleife |
+| `three.min.js` | Three.js r147 (vendored) |

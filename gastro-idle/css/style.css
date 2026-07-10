@@ -1,0 +1,152 @@
+/* ============================================================
+   Gastro-Imperium — UI-Design: dunkles Glas, goldene Akzente
+   ============================================================ */
+:root{
+  --gold:#e8b84b; --gold-soft:#f5d78a;
+  --bg-panel:rgba(16,18,26,.72); --bg-card:rgba(255,255,255,.055);
+  --border:rgba(255,255,255,.09); --text:#f2f0ea; --text-dim:#9aa0ad;
+  --green:#6fd58a; --radius:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--text);background:#0b0e18;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#scene{position:fixed;inset:0}
+#scene canvas{display:block;cursor:grab}
+#scene canvas:active{cursor:grabbing}
+
+/* ---------- Topbar ---------- */
+#topbar{position:fixed;top:14px;left:14px;display:flex;flex-direction:column;gap:4px;z-index:5;
+  background:var(--bg-panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px 12px 16px;
+  box-shadow:0 8px 30px rgba(0,0,0,.35)}
+#gameTitle{font-size:11px;letter-spacing:.24em;color:var(--gold);font-weight:700;text-transform:uppercase}
+#money{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;
+  background:linear-gradient(180deg,#fff 20%,var(--gold-soft));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+#rate{font-size:13px;color:var(--text-dim);font-variant-numeric:tabular-nums}
+#rate b{color:var(--green);font-weight:600}
+#subline{display:flex;gap:12px;font-size:12px}
+#satInfo{color:#9fd8b2}
+#starsInfo{color:var(--gold-soft);display:none}
+
+#controls{position:fixed;top:14px;right:14px;display:flex;gap:8px;z-index:6}
+.ctl{background:var(--bg-panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;font-weight:600;
+  padding:10px 14px;cursor:pointer;transition:transform .12s,background .2s}
+.ctl:hover{background:rgba(255,255,255,.12)}
+.ctl:active{transform:scale(.94)}
+#btnPrestige{color:var(--gold-soft)}
+#btnPrestige.ready{animation:glowPulse 2.2s ease-in-out infinite;border-color:rgba(232,184,75,.6)}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 0 rgba(232,184,75,0)}50%{box-shadow:0 0 18px rgba(232,184,75,.45)}}
+
+/* ---------- Event-Banner ---------- */
+#eventBanner{position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-90px);z-index:5;
+  background:linear-gradient(135deg,rgba(90,54,150,.85),rgba(190,84,45,.85));backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.25);border-radius:var(--radius);padding:10px 20px;
+  font-size:14px;font-weight:600;text-align:center;box-shadow:0 10px 34px rgba(0,0,0,.45);
+  transition:transform .5s cubic-bezier(.34,1.56,.64,1);max-width:min(520px,86vw)}
+#eventBanner.show{transform:translateX(-50%) translateY(0)}
+#eventBanner small{display:block;font-weight:400;color:rgba(255,255,255,.75);font-size:11px;margin-top:2px}
+
+/* ---------- Panel & Tabs ---------- */
+#panel{position:fixed;top:0;right:0;bottom:0;width:360px;z-index:4;display:flex;flex-direction:column;
+  padding:74px 12px 12px;pointer-events:none}
+#tabs{pointer-events:auto;display:flex;gap:6px;padding:0 4px 8px}
+#tabs button{flex:1;background:var(--bg-panel);backdrop-filter:blur(12px);border:1px solid var(--border);
+  border-radius:10px;color:var(--text-dim);font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 4px;cursor:pointer;
+  transition:color .2s,border-color .2s}
+#tabs button.active{color:var(--gold-soft);border-color:rgba(232,184,75,.5)}
+#panelInner{pointer-events:auto;overflow-y:auto;display:flex;flex-direction:column;gap:10px;
+  padding:2px 4px 20px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+#panelInner::-webkit-scrollbar{width:6px}
+#panelInner::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:3px}
+
+.card{background:var(--bg-panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;
+  box-shadow:0 6px 22px rgba(0,0,0,.3);animation:cardIn .45s cubic-bezier(.34,1.56,.64,1);cursor:pointer;
+  transition:border-color .25s}
+.card:hover{border-color:rgba(255,255,255,.2)}
+@keyframes cardIn{from{opacity:0;transform:translateX(46px) scale(.92)}to{opacity:1;transform:none}}
+.crow{display:flex;align-items:center;gap:10px}
+.cemoji{font-size:26px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}
+.cinfo{flex:1;min-width:0}
+.cname{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.csub{font-size:11px;color:var(--text-dim);margin-top:1px}
+.cearn{text-align:right;font-variant-numeric:tabular-nums}
+.cearn .val{font-size:13px;font-weight:700;color:var(--green)}
+.cearn .per{font-size:10px;color:var(--text-dim)}
+.pbar{height:9px;border-radius:6px;background:rgba(0,0,0,.45);margin:9px 0;overflow:hidden;position:relative}
+.pfill{position:absolute;inset:0;border-radius:6px;background:linear-gradient(90deg,#4f9e63,#7ede97);
+  transform-origin:left;transform:scaleX(0)}
+.pfill.continuous{background:linear-gradient(90deg,#4f9e63,#7ede97,#4f9e63);background-size:200% 100%;
+  animation:flow 1.2s linear infinite;transform:scaleX(1)!important}
+@keyframes flow{from{background-position:0 0}to{background-position:-200% 0}}
+.pbar .shine{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
+  background-size:200% 100%;animation:shine 2.6s linear infinite;border-radius:6px}
+@keyframes shine{from{background-position:200% 0}to{background-position:-200% 0}}
+.buy{width:100%;border:none;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;font-weight:700;
+  color:#1c2210;background:linear-gradient(180deg,#8fdc85,#5cab5d);cursor:pointer;display:flex;justify-content:space-between;gap:8px;
+  transition:transform .1s,filter .2s;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+.buy:hover{filter:brightness(1.08)}
+.buy:active{transform:scale(.96)}
+.buy:disabled{background:rgba(255,255,255,.09);color:var(--text-dim);cursor:default;box-shadow:none}
+.buy .cost{font-variant-numeric:tabular-nums;font-weight:600}
+.card.locked .cname{color:var(--gold-soft)}
+.buy.unlock{background:linear-gradient(180deg,#f3d98b,#d4a52f);color:#2b2008}
+.buy.unlock:disabled{background:rgba(255,255,255,.09);color:var(--text-dim)}
+.staffrow{display:flex;gap:8px;margin-top:8px}
+.mini{flex:1;border:1px solid var(--border);border-radius:9px;background:rgba(255,255,255,.06);
+  color:var(--text);font-family:inherit;font-size:11px;font-weight:600;padding:7px 6px;cursor:pointer;
+  transition:transform .1s,background .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini b{color:var(--gold-soft);font-weight:600}
+.mini:hover{background:rgba(255,255,255,.12)}
+.mini:active{transform:scale(.96)}
+.mini:disabled{opacity:.45;cursor:default}
+.mshint{font-size:10.5px;color:var(--text-dim);margin-top:7px;text-align:center}
+.mshint b{color:var(--gold-soft);font-weight:600}
+.statline{display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-dim);padding:3px 0}
+.statline b{color:var(--text);font-variant-numeric:tabular-nums}
+.upcard .buy,.achcard{cursor:default}
+
+/* ---------- Toasts ---------- */
+#toasts{position:fixed;bottom:16px;left:16px;display:flex;flex-direction:column;gap:8px;z-index:8;pointer-events:none}
+.toast{background:var(--bg-panel);backdrop-filter:blur(12px);border:1px solid var(--border);
+  border-left:3px solid var(--gold);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastIn .4s cubic-bezier(.34,1.56,.64,1);max-width:340px}
+.toast.gold{border:1px solid rgba(232,184,75,.55);border-left:3px solid var(--gold);
+  background:linear-gradient(135deg,rgba(60,45,14,.88),rgba(16,18,26,.85));color:var(--gold-soft)}
+.toast.out{transition:opacity .5s,transform .5s;opacity:0;transform:translateX(-30px)}
+@keyframes toastIn{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
+
+/* ---------- Modals ---------- */
+#modalWrap{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
+  background:rgba(5,7,14,.6);backdrop-filter:blur(6px)}
+#modalWrap.show{display:flex}
+#modal{background:rgba(22,25,36,.96);border:1px solid var(--border);border-radius:18px;padding:26px 28px;
+  max-width:min(440px,90vw);max-height:84vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,0,0,.6);
+  animation:modalIn .35s cubic-bezier(.34,1.56,.64,1);text-align:center}
+@keyframes modalIn{from{opacity:0;transform:scale(.85) translateY(24px)}to{opacity:1;transform:none}}
+#modal h2{font-size:20px;margin-bottom:10px;color:var(--gold-soft)}
+#modal p{font-size:13.5px;line-height:1.55;color:#cfd3db;margin-bottom:12px;text-align:left}
+#modal p.center{text-align:center}
+#modal .big{font-size:24px;font-weight:800;color:var(--green);margin:8px 0 14px}
+#modal .mbtn{border:none;border-radius:11px;padding:11px 22px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;
+  margin:4px 5px;transition:transform .1s}
+#modal .mbtn:active{transform:scale(.95)}
+#modal .primary{background:linear-gradient(180deg,#f3d98b,#d4a52f);color:#2b2008}
+#modal .primary:disabled{background:rgba(255,255,255,.1);color:var(--text-dim);cursor:default}
+#modal .ghost{background:rgba(255,255,255,.08);color:var(--text)}
+#modal .danger{display:inline-block;margin-top:16px;font-size:11px;color:#c96a6a;cursor:pointer;background:none;border:none;font-family:inherit}
+.msep{border:none;border-top:1px solid var(--border);margin:14px 0}
+.setrow{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin:6px 0}
+.saveio{width:100%;height:64px;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:9px;
+  color:var(--text);font-size:10px;padding:8px;resize:none;margin-bottom:8px;font-family:monospace}
+
+/* ---------- Responsive ---------- */
+@media (max-width:760px){
+  #panel{top:auto;left:0;width:100%;height:48%;padding:0 10px 10px}
+  #tabs{padding-top:8px}
+  #money{font-size:24px}
+  #topbar{padding:10px 14px}
+  #eventBanner{top:auto;bottom:49%;font-size:12px}
+}
