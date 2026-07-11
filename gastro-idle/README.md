@@ -45,8 +45,9 @@ Einfach **`index.html` doppelklicken** — das Spiel läuft direkt im Browser, k
 ## Steuerung
 
 - **Ziehen**: Kamera drehen · **Scrollen**: Zoomen · **Klick auf Gebäude**: Bonus-Schub
-- Oben rechts: Kaufmenge (×1/×10/×100/Max), Einstellungen, Hilfe, Prestige
-- Panel-Tabs: 🏪 Betriebe · 🔬 Upgrades · 🏆 Boni
+- Oben rechts: Kaufmenge (×1/×10/×25/×100/Max), Einstellungen, Hilfe, Prestige
+- Unten Mitte: Spieltempo ⏸/1×/2×/4×
+- Panel-Tabs: 🏪 Betriebe · 🔬 Upgrades · 🎯 Ziele · 🏆 Boni
 
 ## Projektstruktur
 

@@ -65,6 +65,58 @@ function makeTextTexture(txt,size,color){
 }
 /* Canvas-Texturen sind sRGB — für korrektes Farbmanagement markieren */
 function srgbTex(t){t.encoding=THREE.sRGBEncoding;return t;}
+
+/* ---------- Prozedurale Oberflächen-Texturen (Art-Direction: weiche,
+   stilisierte Materialien mit dezenter Variation statt flacher Farben) ---------- */
+function texNoise(base,vary,amount){          // Gras, Putz, Stoff
+  const c=document.createElement('canvas');c.width=c.height=128;
+  const g=c.getContext('2d');
+  g.fillStyle=base;g.fillRect(0,0,128,128);
+  g.fillStyle=vary;
+  for(let i=0;i<amount;i++){
+    g.globalAlpha=rand(0.05,0.2);
+    const s=rand(3,14);
+    g.fillRect(rand(0,128),rand(0,128),s,s*rand(0.4,1.4));
+  }
+  g.globalAlpha=1;
+  const t=srgbTex(new THREE.CanvasTexture(c));
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;
+}
+function texAsphalt(){                        // Straße mit feinem Korn
+  const c=document.createElement('canvas');c.width=c.height=128;
+  const g=c.getContext('2d');
+  g.fillStyle='#484c55';g.fillRect(0,0,128,128);
+  for(let i=0;i<420;i++){
+    g.fillStyle=Math.random()<0.5?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.09)';
+    g.fillRect(rand(0,128),rand(0,128),rand(1,2.5),rand(1,2.5));
+  }
+  const t=srgbTex(new THREE.CanvasTexture(c));
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;
+}
+function texPavers(base,line){                // Gehweg-Platten
+  const c=document.createElement('canvas');c.width=c.height=128;
+  const g=c.getContext('2d');
+  g.fillStyle=base;g.fillRect(0,0,128,128);
+  for(let i=0;i<260;i++){
+    g.fillStyle='rgba(255,255,255,0.04)';
+    g.fillRect(rand(0,128),rand(0,128),rand(2,6),rand(2,6));
+  }
+  g.strokeStyle=line;g.lineWidth=2.5;
+  for(let x=0;x<=128;x+=32){g.beginPath();g.moveTo(x,0);g.lineTo(x,128);g.stroke();}
+  for(let y=0;y<=128;y+=32){g.beginPath();g.moveTo(0,y);g.lineTo(128,y);g.stroke();}
+  const t=srgbTex(new THREE.CanvasTexture(c));
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;
+}
+/* Renovierungs-Look: niedrige Ausbaustufe = verblasste, leicht vergraute
+   Fassade, hohe Stufe = satte, frisch gestrichene Farbe */
+const _greyMix=new THREE.Color(0x9a948c);
+function wornColor(hex,extra){
+  const c=new THREE.Color(hex);
+  const worn=clamp(0.30-extra*0.10,0,0.30);
+  c.lerp(_greyMix,worn);
+  c.multiplyScalar(0.88+extra*0.05);
+  return c;
+}
 function roundRectPath(g,x,y,w,h,r){
   g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);
   g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();

@@ -13,8 +13,31 @@ const AUDIO=(()=>{
     ac=new AC();
     sfxBus=ac.createGain();sfxBus.gain.value=0.25*S.volSfx;sfxBus.connect(ac.destination);
     musicBus=ac.createGain();musicBus.gain.value=0.1*S.volMusic;musicBus.connect(ac.destination);
+    startMurmur();
     startMusic();
     return true;
+  }
+  /* Straßen-Ambiente: leises, bandgefiltertes Stimmengemurmel,
+     dessen Pegel mit der Zahl der Gäste atmet */
+  let murmurGain=null;
+  function startMurmur(){
+    const len=ac.sampleRate*2;
+    const buf=ac.createBuffer(1,len,ac.sampleRate);
+    const d=buf.getChannelData(0);
+    let last=0;
+    for(let i=0;i<len;i++){last=last*0.96+(Math.random()*2-1)*0.04;d[i]=last*3;}
+    const src=ac.createBufferSource();src.buffer=buf;src.loop=true;
+    const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=480;bp.Q.value=0.7;
+    murmurGain=ac.createGain();murmurGain.gain.value=0;
+    src.connect(bp);bp.connect(murmurGain);murmurGain.connect(sfxBus);
+    src.start();
+    setInterval(()=>{
+      if(!murmurGain)return;
+      const n=(typeof ACTORS!=='undefined')?ACTORS.count():0;
+      const day=(typeof nightFactor==='function')?1-nightFactor()*0.5:1;
+      const target=document.hidden?0:Math.min(n/50,1)*0.05*day;
+      murmurGain.gain.linearRampToValueAtTime(target,ac.currentTime+0.8);
+    },1000);
   }
   function resume(){if(ac&&ac.state==='suspended')ac.resume();}
   function applyVolumes(){

@@ -69,8 +69,9 @@ const WORLD=(()=>{
   }
 
   /* ---------- Bau-Bausteine ---------- */
+  let _extra=0;   // aktuelle Ausbaustufe des Gebäudes → sichtbare Renovierung
   function block(g,w,h,d,color,r,y,z,x){
-    const m=new THREE.Mesh(roundedBoxGeo(w,h,d,r===undefined?0.28:r),mat(color));
+    const m=new THREE.Mesh(roundedBoxGeo(w,h,d,r===undefined?0.28:r),mat(wornColor(color,_extra)));
     m.position.set(x||0,(y||0),z||0);
     m.castShadow=true;m.receiveShadow=true;g.add(m);return m;
   }
@@ -85,15 +86,97 @@ const WORLD=(()=>{
   }
   function addWindows(g,rec,floors,W,D,FH,perFloor,skipGround){
     rec.winMat=mat(0xa8cfe8,{emissive:0xffc66b,emissiveIntensity:0,roughness:.25});
+    rec.facade={W,D,FH,floors};
+    const frameMat=mat(0xf2eee2,{roughness:.7});
+    const trimMat=mat(0xe8e2d2,{roughness:.8});
+    // Sockel + Geschossgesimse: Fassade bekommt Gliederung statt flacher Wand
+    const plinth=new THREE.Mesh(roundedBoxGeo(W+0.18,0.4,D+0.18,0.12),mat(0x8a8478,{roughness:.9}));
+    plinth.position.y=0.2;plinth.receiveShadow=true;g.add(plinth);
+    for(let f=1;f<floors;f++){
+      const cor=new THREE.Mesh(boxGeo(W+0.14,0.1,D+0.14),trimMat);
+      cor.position.y=f*FH;g.add(cor);
+    }
+    rec.groundWins=[];
     for(let f=0;f<floors;f++){
       const y=f*FH+FH*0.6;
       for(let wx=0;wx<perFloor;wx++){
         const px=(wx-(perFloor-1)/2)*(W/(perFloor+0.4));
         if(f===0&&skipGround&&Math.abs(px)<0.9)continue;
+        const frame=new THREE.Mesh(roundedBoxGeo(0.86,1.06,0.07,0.05),frameMat);
+        frame.position.set(px,y,D/2+0.02);g.add(frame);
         const win=new THREE.Mesh(roundedBoxGeo(0.72,0.92,0.1,0.08),rec.winMat);
         win.position.set(px,y,D/2+0.04);g.add(win);
+        const sill=new THREE.Mesh(boxGeo(0.92,0.06,0.16),trimMat);
+        sill.position.set(px,y-0.56,D/2+0.08);g.add(sill);
+        if(f===0)rec.groundWins.push(px);
       }
     }
+  }
+  /* Renovierungs-Deko: mit jeder Ausbaustufe wird der Betrieb sichtbar schöner */
+  const GASTRO_FORMS=['cafe','pizza','burger','sushi','steak','hotel','luxury','casino'];
+  function addRenovationDeco(g,rec,def){
+    if(!rec.facade)return;
+    const {W,D}=rec.facade;
+    // Stufe 1+: Blumenkästen unter den Erdgeschossfenstern
+    if(rec.extra>=1&&rec.groundWins){
+      const boxMat=mat(0x7a4a30,{roughness:.85});
+      const fls=[0xe36a8a,0xf2c14e,0xffffff,0xb08fe0];
+      for(const px of rec.groundWins){
+        const fb=new THREE.Mesh(roundedBoxGeo(0.8,0.18,0.22,0.05),boxMat);
+        fb.position.set(px,0.85,D/2+0.16);g.add(fb);
+        for(let k=0;k<3;k++){
+          const fl=new THREE.Mesh(new THREE.SphereGeometry(0.055,6,5),
+            new THREE.MeshBasicMaterial({color:fls[(k+Math.abs(px*7)|0)%4]}));
+          fl.position.set(px-0.22+k*0.22,0.98,D/2+0.16);g.add(fl);
+        }
+      }
+    }
+    // Stufe 2+: Lichterkette über der Front (leuchtet nachts)
+    if(rec.extra>=2){
+      rec.bulbs=[];
+      const cols=[0xffd98a,0x8ad9ff,0xff9ad9,0xa5ff8a];
+      for(let b=0;b<9;b++){
+        const t=b/8;
+        const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.06,6,5),
+          new THREE.MeshStandardMaterial({color:cols[b%4],emissive:cols[b%4],emissiveIntensity:0}));
+        bulb.position.set(-W/2+t*W,rec.facade.FH*1.06-Math.sin(t*Math.PI)*0.35,D/2+0.3);
+        g.add(bulb);rec.bulbs.push(bulb.material);
+      }
+    }
+    // Stufe 3: Kübelpflanzen flankieren den Eingang
+    if(rec.extra>=3){
+      [[-1.1],[1.1]].forEach(p=>{
+        const pot=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.17,0.34,10),mat(0x9a5b4a));
+        pot.position.set(p[0],0.17,D/2+0.6);pot.castShadow=true;g.add(pot);
+        const pl=new THREE.Mesh(new THREE.IcosahedronGeometry(0.26,1),mat(0x559a4c,{roughness:1}));
+        pl.position.set(p[0],0.52,D/2+0.6);g.add(pl);
+      });
+    }
+    // Kreidetafel mit Tagesangebot (Gastro-Charme, immer)
+    if(GASTRO_FORMS.includes(def.form)&&def.form!=='casino'){
+      const bt=makeChalkboardTexture(def);
+      [[-0.12],[0.12]].forEach((p,side)=>{
+        const b=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.82),
+          side===0?new THREE.MeshStandardMaterial({map:bt,roughness:.9})
+                  :new THREE.MeshStandardMaterial({color:0x2e2a26,roughness:.9}));
+        b.position.set(W/2+0.9,0.45,D/2+1.1+p[0]*2);
+        b.rotation.x=side===0?-0.22:0.22;
+        b.rotation.y=side===0?0:Math.PI;
+        g.add(b);
+      });
+    }
+  }
+  function makeChalkboardTexture(def){
+    const c=document.createElement('canvas');c.width=96;c.height=128;
+    const g=c.getContext('2d');
+    g.fillStyle='#2e2a26';g.fillRect(0,0,96,128);
+    g.strokeStyle='#8a7a5a';g.lineWidth=5;g.strokeRect(3,3,90,122);
+    g.fillStyle='#e8e2d2';g.font='bold 15px sans-serif';g.textAlign='center';
+    g.fillText('HEUTE',48,30);
+    g.font='22px sans-serif';g.fillText(def.emoji,48,62);
+    g.strokeStyle='#cfc8b4';g.lineWidth=2;
+    [80,94,108].forEach((y,i)=>{g.beginPath();g.moveTo(18,y);g.lineTo(18+[58,44,50][i],y);g.stroke();});
+    return srgbTex(new THREE.CanvasTexture(c));
   }
   /* geschwungene Markise: halber Zylindermantel */
   function addAwning(g,def,y,z,w){
@@ -117,8 +200,27 @@ const WORLD=(()=>{
       const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.5,6),legMat);
       pole.position.set(p[0],1.1,p[1]);g.add(pole);
       for(let st=0;st<2;st++){
+        const sx=p[0]+(st?0.78:-0.78),sz=p[1]+rand(-0.15,0.15);
         const stool=new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.17,0.44,10),legMat);
-        stool.position.set(p[0]+(st?0.78:-0.78),0.22,p[1]+rand(-0.15,0.15));g.add(stool);
+        stool.position.set(sx,0.22,sz);g.add(stool);
+        // Teller & Tasse auf dem Tisch — kleine glaubwürdige Details
+        if(st===0){
+          const plate=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.02,12),topMat);
+          plate.position.set(p[0]+rand(-0.2,0.2),0.83,p[1]+rand(-0.2,0.2));g.add(plate);
+          const cup=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.04,0.09,8),
+            mat(0xf5f2ea,{roughness:.5}));
+          cup.position.set(p[0]+rand(-0.3,0.3),0.87,p[1]+rand(-0.3,0.3));g.add(cup);
+        }
+        // sitzende Gäste (statische Deko, ~55 % Belegung)
+        if(Math.random()<0.55&&typeof ACTORS!=='undefined'){
+          const guest=ACTORS.makeSeated();
+          if(guest){
+            guest.position.set(sx,0.28,sz);
+            guest.rotation.y=Math.atan2(p[0]-sx,p[1]-sz);
+            guest.scale.multiplyScalar(0.92);
+            g.add(guest);
+          }
+        }
       }
     });
   }
@@ -555,7 +657,9 @@ const WORLD=(()=>{
     const plaza=new THREE.Mesh(roundedBoxGeo(8.4,0.26,7.6,0.9),
       new THREE.MeshStandardMaterial({color:0xd8d0bc,roughness:.95}));
     plaza.position.set(0,0.02,-0.6);plaza.receiveShadow=true;g.add(plaza);
+    _extra=extra;                          // Renovierungsgrad für block()-Farben
     rec.height=FORMS[def.form](g,def,extra,rec)||5;
+    addRenovationDeco(g,rec,def);
     g.traverse(o=>{if(o.isMesh)o.userData.venue=i;});
     pickMeshes.push(g);
     scene.add(g);
@@ -667,6 +771,8 @@ const WORLD=(()=>{
       if(rec.winMat)rec.winMat.emissiveIntensity=N*(0.75+0.2*Math.sin(t*0.7+rec.group.position.x));
       if(rec.towerMat)rec.towerMat.emissiveIntensity=N*0.85;
       if(rec.lanterns)for(const lm of rec.lanterns)lm.emissiveIntensity=0.15+N*(0.8+0.2*Math.sin(t*2));
+      if(rec.bulbs)for(let i=0;i<rec.bulbs.length;i++)
+        rec.bulbs[i].emissiveIntensity=N*(0.7+0.5*Math.sin(t*2.2+i*1.7));
       if(rec.beacon)rec.beacon.emissiveIntensity=(Math.sin(t*4)>0.4?1.6:0.1)*(0.3+N*0.7);
       for(const nm of rec.neonMats){
         const pulse=0.55+0.45*Math.sin(t*3.2+rec.group.position.x*0.7);

@@ -1,91 +1,159 @@
 'use strict';
 /* ============================================================
-   actors.js — ACTORS: Gäste, Personal, Lieferautos, Drohnen, Vögel
-   Die kleinen Leute machen die Welt lebendig: sie laufen zu den
-   Betrieben, essen, hinterlassen Trinkgeld und tanzen nachts.
+   actors.js — ACTORS: Charaktere, Autos, Drohnen, Vögel
+   Art-Direction Charaktere: leicht übergroßer Kopf, klare
+   Silhouette, echte Beine & Arme mit Schwung-Animation,
+   Gesicht (Augen + Lächeln), Frisuren, zweiteilige Outfits.
    ============================================================ */
 const ACTORS=(()=>{
-  const PEOPLE_MAX=70;
+  const PEOPLE_MAX=56;
   let people=[],cars=[],drones=[],birds=[];
-  let parts=null,bodyMats,skinMats,hatMats,eyeMat;
+  let P=null;                       // geteilte Geometrien
+  let skinMats,hairMats,shirtMats,pantsMats,shoeMat,eyeMat,mouthMat,hatMats;
   let rushVenue=-1,rushUntil=0,spawnCooldown=0;
-  const bodyPalette=[0xe36a6a,0x6a9ee3,0x6ac98f,0xe3b56a,0xb08fe0,0xe08fc2,0x8fd3e0,0xd3e08f,0xe0a58f,0x9fb3c8,0x7fc9b0,0xc97f7f];
-  const skinTones=[0xf5d0a9,0xe8b98a,0xc98d5f,0x8d5f3f];
+  const SKIN=[0xf5d0a9,0xe8b98a,0xc98d5f,0x8d5f3f,0xf6dcc4];
+  const HAIR=[0x2a2320,0x5a3a22,0x8a5a2a,0xd8b06a,0x9a9ba0,0xb5482f,0x3d2c3f];
+  const SHIRTS=[0xe36a6a,0x6a9ee3,0x6ac98f,0xe3b56a,0xb08fe0,0xe08fc2,0x8fd3e0,0xd3e08f,0xe0a58f,0x7fc9b0,0xf0e6d4,0x4a6a8a];
+  const PANTS=[0x3a4050,0x5a4a3a,0x2e3a55,0x6b6f78,0x8a4a4a,0x3f5a44,0x2a2c33];
 
   function init(){
-    parts={
-      body:new THREE.CapsuleGeometry(0.21,0.42,4,10),
-      head:new THREE.SphereGeometry(0.165,12,10),
-      arm:new THREE.CapsuleGeometry(0.055,0.3,3,8),
-      eye:new THREE.SphereGeometry(0.03,6,6),
-      hat:new THREE.CylinderGeometry(0.19,0.19,0.14,12),
-      brim:new THREE.CylinderGeometry(0.27,0.27,0.035,12),
-      toque:new THREE.CylinderGeometry(0.17,0.14,0.26,12),
-      tray:new THREE.CylinderGeometry(0.16,0.16,0.03,12),
+    P={
+      torso:new THREE.CapsuleGeometry(0.185,0.3,4,10),
+      head:new THREE.SphereGeometry(0.195,14,12),
+      arm:new THREE.CapsuleGeometry(0.055,0.26,3,8),
+      leg:new THREE.CapsuleGeometry(0.07,0.26,3,8),
+      shoe:new THREE.SphereGeometry(0.085,8,6),
+      eye:new THREE.SphereGeometry(0.028,6,6),
+      mouth:new THREE.TorusGeometry(0.052,0.011,5,10,Math.PI*0.75),
+      hairCap:new THREE.SphereGeometry(0.205,12,8,0,Math.PI*2,0,Math.PI*0.55),
+      bangs:new THREE.BoxGeometry(0.3,0.09,0.1),
+      bun:new THREE.SphereGeometry(0.09,8,6),
+      longHair:new THREE.CylinderGeometry(0.19,0.14,0.3,10,1,true),
+      hat:new THREE.CylinderGeometry(0.19,0.19,0.13,12),
+      brim:new THREE.CylinderGeometry(0.28,0.28,0.03,12),
+      toque:new THREE.CylinderGeometry(0.16,0.13,0.28,12),
+      toqueTop:new THREE.SphereGeometry(0.165,10,8,0,Math.PI*2,0,Math.PI*0.5),
+      apron:new THREE.BoxGeometry(0.3,0.34,0.04),
+      tray:new THREE.CylinderGeometry(0.15,0.15,0.025,12),
     };
-    bodyMats=bodyPalette.map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.75}));
-    skinMats=skinTones.map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.65}));
-    hatMats=[0x3a3f4a,0xc9564a,0x4a7fc9,0xe0c04a].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.8}));
+    const std=(c,r)=>new THREE.MeshStandardMaterial({color:c,roughness:r===undefined?.75:r});
+    skinMats=SKIN.map(c=>std(c,.6));
+    hairMats=HAIR.map(c=>std(c,.85));
+    shirtMats=SHIRTS.map(c=>std(c,.8));
+    pantsMats=PANTS.map(c=>std(c,.85));
+    shoeMat=std(0x2a2521,.6);
     eyeMat=new THREE.MeshBasicMaterial({color:0x22242c});
+    mouthMat=new THREE.MeshBasicMaterial({color:0x7a3f3a});
+    hatMats=[0x3a3f4a,0xc9564a,0x4a7fc9,0xe0c04a].map(c=>std(c,.8));
   }
 
-  /* ---------- Figuren-Fabrik ---------- */
-  function makeFigure(bodyMat,headMat){
+  /* ---------- Basis-Figur: Kopf, Torso, Arme mit Gelenk, Beine mit Gelenk ---------- */
+  function makeHuman(o){
     const g=new THREE.Group();
-    const body=new THREE.Mesh(parts.body,bodyMat);
-    body.position.y=0.52;body.castShadow=true;g.add(body);
-    const head=new THREE.Mesh(parts.head,headMat);
-    head.position.y=1.0;g.add(head);
-    [-0.06,0.06].forEach(x=>{
-      const eye=new THREE.Mesh(parts.eye,eyeMat);
-      eye.position.set(x,1.03,0.148);g.add(eye);
+    const skin=o.skin||skinMats[randI(0,skinMats.length-1)];
+    // Beine (Drehpunkt an der Hüfte)
+    const mkLeg=x=>{
+      const pv=new THREE.Group();pv.position.set(x,0.56,0);
+      const leg=new THREE.Mesh(P.leg,o.pants);leg.position.y=-0.2;leg.castShadow=true;pv.add(leg);
+      const shoe=new THREE.Mesh(P.shoe,shoeMat);shoe.scale.set(1,0.6,1.4);shoe.position.set(0,-0.38,0.04);pv.add(shoe);
+      g.add(pv);return pv;
+    };
+    const ll=mkLeg(-0.095),rl=mkLeg(0.095);
+    // Torso
+    const torso=new THREE.Mesh(P.torso,o.shirt);
+    torso.position.y=0.82;torso.scale.set(1,1,0.86);torso.castShadow=true;g.add(torso);
+    // Arme (Drehpunkt an der Schulter)
+    const mkArm=x=>{
+      const pv=new THREE.Group();pv.position.set(x,0.98,0);pv.rotation.z=x>0?-0.14:0.14;
+      const arm=new THREE.Mesh(P.arm,o.shirt);arm.position.y=-0.15;pv.add(arm);
+      const hand=new THREE.Mesh(P.eye,skin);hand.scale.set(1.8,1.8,1.8);hand.position.y=-0.31;pv.add(hand);
+      g.add(pv);return pv;
+    };
+    const la=mkArm(-0.245),ra=mkArm(0.245);
+    // Kopf mit Gesicht
+    const head=new THREE.Mesh(P.head,skin);head.position.y=1.28;head.castShadow=true;g.add(head);
+    [-0.068,0.068].forEach(x=>{
+      const eye=new THREE.Mesh(P.eye,eyeMat);eye.position.set(x,1.31,0.172);g.add(eye);
     });
-    const la=new THREE.Mesh(parts.arm,bodyMat);
-    la.position.set(-0.27,0.58,0);la.rotation.z=0.22;g.add(la);
-    const ra=new THREE.Mesh(parts.arm,bodyMat);
-    ra.position.set(0.27,0.58,0);ra.rotation.z=-0.22;g.add(ra);
-    g.userData.arms=[la,ra];
+    const mouth=new THREE.Mesh(P.mouth,mouthMat);
+    mouth.position.set(0,1.235,0.183);mouth.rotation.z=Math.PI+Math.PI*0.125;
+    mouth.scale.set(1,0.8,0.5);g.add(mouth);
+    // Frisur / Kopfbedeckung
+    const hairM=o.hairMat||hairMats[randI(0,hairMats.length-1)];
+    const style=o.hair!==undefined?o.hair:randI(0,4);
+    if(style<=3){
+      const cap=new THREE.Mesh(P.hairCap,hairM);cap.position.y=1.305;g.add(cap);
+      if(style===1){const b=new THREE.Mesh(P.bangs,hairM);b.position.set(0,1.4,0.15);b.rotation.x=0.3;g.add(b);}
+      if(style===2){const b=new THREE.Mesh(P.bun,hairM);b.position.set(0,1.44,-0.13);g.add(b);}
+      if(style===3){const lh=new THREE.Mesh(P.longHair,hairM);lh.position.set(0,1.2,-0.05);g.add(lh);}
+    }else{
+      const hm=hatMats[randI(0,hatMats.length-1)];
+      const hat=new THREE.Mesh(P.hat,hm);hat.position.y=1.45;g.add(hat);
+      const brim=new THREE.Mesh(P.brim,hm);brim.position.y=1.39;g.add(brim);
+    }
+    g.userData.parts={la,ra,ll,rl,torso,head};
     return g;
   }
   function makeGuest(){
-    const g=makeFigure(bodyMats[randI(0,bodyMats.length-1)],skinMats[randI(0,skinMats.length-1)]);
-    if(Math.random()<0.33){
-      const hm=hatMats[randI(0,hatMats.length-1)];
-      const hat=new THREE.Mesh(parts.hat,hm);hat.position.y=1.17;g.add(hat);
-      const brim=new THREE.Mesh(parts.brim,hm);brim.position.y=1.1;g.add(brim);
-    }
-    const s=rand(0.85,1.12);g.scale.set(s,s,s);
+    const g=makeHuman({
+      shirt:shirtMats[randI(0,shirtMats.length-1)],
+      pants:pantsMats[randI(0,pantsMats.length-1)],
+    });
+    const s=rand(0.8,1.08);
+    g.scale.set(s,s*rand(0.94,1.06),s);
     scene.add(g);
     return g;
   }
-  /* Personal wird von buildings.js vor die Betriebe gestellt */
+  /* Sitzende Deko-Gäste an Außentischen (statisch, gehören zum Gebäude) */
+  function makeSeated(){
+    if(!P)return null;
+    const g=makeHuman({
+      shirt:shirtMats[randI(0,shirtMats.length-1)],
+      pants:pantsMats[randI(0,pantsMats.length-1)],
+    });
+    const p=g.userData.parts;
+    p.ll.rotation.x=p.rl.rotation.x=-1.45;      // Beine nach vorn
+    p.la.rotation.x=-0.7;p.ra.rotation.x=-0.7;  // Hände Richtung Tisch
+    g.position.y=-0.18;                          // aufs Hockerniveau
+    g.userData.seated=true;
+    return g;
+  }
+  /* Personal: Uniform macht die Rolle sofort erkennbar */
   function makeStaffFigure(type){
     let g;
+    const white=new THREE.MeshStandardMaterial({color:0xf5f2ea,roughness:.7});
     if(type==='chef'){
-      g=makeFigure(new THREE.MeshStandardMaterial({color:0xf5f2ea,roughness:.7}),skinMats[randI(0,3)]);
-      const tq=new THREE.Mesh(parts.toque,new THREE.MeshStandardMaterial({color:0xf5f2ea,roughness:.8}));
-      tq.position.y=1.24;g.add(tq);
+      g=makeHuman({shirt:white,pants:pantsMats[6],hair:randI(0,3)});
+      const tq=new THREE.Mesh(P.toque,white);tq.position.y=1.52;g.add(tq);
+      const tt=new THREE.Mesh(P.toqueTop,white);tt.position.y=1.66;g.add(tt);
+      [[-0.05,0.95],[0.05,0.87]].forEach(p=>{   // Knopfreihe
+        const b=new THREE.Mesh(P.eye,eyeMat);b.position.set(p[0],p[1],0.17);g.add(b);
+      });
     }else if(type==='waiter'){
-      g=makeFigure(new THREE.MeshStandardMaterial({color:0x2e3140,roughness:.7}),skinMats[randI(0,3)]);
-      const chest=new THREE.Mesh(boxGeo(0.2,0.3,0.06),new THREE.MeshStandardMaterial({color:0xf5f2ea,roughness:.7}));
-      chest.position.set(0,0.62,0.19);g.add(chest);
-      const tray=new THREE.Mesh(parts.tray,new THREE.MeshStandardMaterial({color:0xd8d8ce,metalness:.6,roughness:.3}));
-      tray.position.set(0.34,0.86,0.12);g.add(tray);
-      const cup=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.04,0.09,8),new THREE.MeshStandardMaterial({color:0xf5f2ea}));
-      cup.position.set(0.34,0.92,0.12);g.add(cup);
-    }else{ // manager
-      g=makeFigure(new THREE.MeshStandardMaterial({color:0x1e2233,roughness:.6}),skinMats[randI(0,3)]);
-      const tie=new THREE.Mesh(boxGeo(0.07,0.26,0.04),new THREE.MeshStandardMaterial({color:0xd4af37,metalness:.5,roughness:.4}));
-      tie.position.set(0,0.66,0.2);g.add(tie);
+      g=makeHuman({shirt:white,pants:pantsMats[6],hair:randI(0,3)});
+      const ap=new THREE.Mesh(P.apron,new THREE.MeshStandardMaterial({color:0x3f5a44,roughness:.85}));
+      ap.position.set(0,0.72,0.16);g.add(ap);
+      const tray=new THREE.Mesh(P.tray,new THREE.MeshStandardMaterial({color:0xd8d8ce,metalness:.6,roughness:.3}));
+      tray.position.set(0.33,0.85,0.1);g.add(tray);
+      const cup=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.038,0.08,8),white);
+      cup.position.set(0.33,0.9,0.1);g.add(cup);
+    }else{ // Manager: dunkler Anzug + goldene Krawatte
+      g=makeHuman({shirt:new THREE.MeshStandardMaterial({color:0x232838,roughness:.6}),
+        pants:pantsMats[6],hair:randI(0,2)});
+      const shirtV=new THREE.Mesh(P.apron,white);shirtV.scale.set(0.55,0.7,0.6);
+      shirtV.position.set(0,0.9,0.155);g.add(shirtV);
+      const tie=new THREE.Mesh(boxGeo(0.06,0.22,0.03),
+        new THREE.MeshStandardMaterial({color:0xd4af37,metalness:.5,roughness:.4}));
+      tie.position.set(0,0.87,0.185);g.add(tie);
     }
-    g.rotation.y=Math.PI;                 // schaut zur Straße
+    g.rotation.y=Math.PI;
     return g;
   }
 
   /* ---------- Gäste-Logik ---------- */
   function targetCount(){
     const base=clamp(6+S.venues.length*4+Math.floor(Math.log10(Math.max(10,S.lifeEarned))),8,PEOPLE_MAX);
-    return Math.round(base*WEATHER.crowdMult());   // bei Regen weniger Laufkundschaft
+    return Math.round(base*WEATHER.crowdMult());
   }
   function spawnGuest(){
     const owned=S.venues.length;
@@ -94,11 +162,23 @@ const ACTORS=(()=>{
     const fromLeft=Math.random()<0.5;
     const spawnX=fromLeft?-24:owned*SPACING+14;
     const doorX=vi*SPACING,sideZ=rand(3.2,4.6);
-    const p={g:makeGuest(),speed:rand(1.3,2.2),state:'walk',venue:vi,
+    const p={g:makeGuest(),speed:rand(1.3,2.1),state:'walk',venue:vi,
       wp:[[doorX+rand(-1.5,1.5),sideZ],[doorX+rand(-0.4,0.4),2.7]],
       timer:0,bob:Math.random()*10,exitX:Math.random()<0.5?-24:owned*SPACING+14};
     p.g.position.set(spawnX,0.17,sideZ);
     people.push(p);
+  }
+  function walkPose(p,sw){
+    const pr=p.g.userData.parts;
+    pr.la.rotation.x=sw*0.65;pr.ra.rotation.x=-sw*0.65;
+    pr.ll.rotation.x=-sw*0.7;pr.rl.rotation.x=sw*0.7;
+    pr.torso.rotation.z=sw*0.035;
+  }
+  function idlePose(p,t){
+    const pr=p.g.userData.parts;
+    pr.la.rotation.x=Math.sin(t*1.4)*0.06;pr.ra.rotation.x=-Math.sin(t*1.4)*0.06;
+    pr.ll.rotation.x=pr.rl.rotation.x=0;
+    pr.torso.rotation.z=Math.sin(t*1.1)*0.02;
   }
   function updateGuests(dt){
     spawnCooldown-=dt;
@@ -109,8 +189,7 @@ const ACTORS=(()=>{
     const night=nightFactor()>0.55;
     const wmult=walkSpeedMult();
     for(let i=people.length-1;i>=0;i--){
-      const p=people[i];p.bob+=dt*9*p.speed*wmult;
-      const arms=p.g.userData.arms;
+      const p=people[i];p.bob+=dt*8.5*p.speed*wmult;
       if(p.state==='walk'||p.state==='leave'){
         const wp=p.wp[0];
         if(!wp){
@@ -118,6 +197,8 @@ const ACTORS=(()=>{
           const def=getDef(p.venue);
           if(night&&(def.form==='casino'||def.form==='park'||def.form==='ship')&&Math.random()<0.7){
             p.state='dance';p.timer=rand(5,14);
+          }else if(Math.random()<0.22){        // kurz vor der Tür warten/umsehen
+            p.state='wait';p.timer=rand(1.5,3.5);
           }else{
             p.state='inside';p.timer=rand(3,9);p.g.visible=false;
           }
@@ -128,26 +209,33 @@ const ACTORS=(()=>{
         if(dist<0.15){p.wp.shift();continue;}
         const mv=Math.min(dist,p.speed*wmult*dt);
         p.g.position.x+=dx/dist*mv;p.g.position.z+=dz/dist*mv;
-        p.g.position.y=0.17+Math.abs(Math.sin(p.bob))*0.07;
+        p.g.position.y=0.17+Math.abs(Math.sin(p.bob))*0.045;
         p.g.rotation.y=Math.atan2(dx,dz);
-        if(arms){const sw=Math.sin(p.bob)*0.55;arms[0].rotation.x=sw;arms[1].rotation.x=-sw;}
+        walkPose(p,Math.sin(p.bob));
+      }else if(p.state==='wait'){
+        p.timer-=dt;
+        idlePose(p,S.gameTime+p.bob);
+        p.g.rotation.y+=Math.sin(S.gameTime*0.8+p.bob)*dt*0.5;  // umsehen
+        if(p.timer<=0){p.state='inside';p.timer=rand(3,9);p.g.visible=false;}
       }else if(p.state==='inside'){
         p.timer-=dt;
         if(p.timer<=0){
           p.g.visible=true;p.state='leave';
-          FX.bubble(p.g.position.x,1.7,p.g.position.z);
+          FX.bubble(p.g.position.x,1.85,p.g.position.z);
           guestTip(p.venue);
           p.wp=[[p.g.position.x+rand(-1,1),rand(3.2,4.6)],[p.exitX,rand(3.2,4.6)]];
         }
       }else if(p.state==='dance'){
         p.timer-=dt;
-        p.g.position.y=0.17+Math.abs(Math.sin(p.bob*1.6))*0.24;
+        const pr=p.g.userData.parts;
+        p.g.position.y=0.17+Math.abs(Math.sin(p.bob*1.6))*0.22;
         p.g.rotation.y+=Math.sin(p.bob*0.7)*dt*2.5;
-        if(arms){arms[0].rotation.z=0.9+Math.sin(p.bob*1.6)*0.5;arms[1].rotation.z=-0.9-Math.cos(p.bob*1.6)*0.5;}
+        pr.la.rotation.z=0.9+Math.sin(p.bob*1.6)*0.5;
+        pr.ra.rotation.z=-0.9-Math.cos(p.bob*1.6)*0.5;
         if(p.timer<=0){
           p.state='leave';
-          if(arms){arms[0].rotation.z=0.22;arms[1].rotation.z=-0.22;}
-          if(Math.random()<0.5)FX.bubble(p.g.position.x,1.7,p.g.position.z);
+          pr.la.rotation.z=0.14;pr.ra.rotation.z=-0.14;
+          if(Math.random()<0.5)FX.bubble(p.g.position.x,1.85,p.g.position.z);
           guestTip(p.venue);
           p.wp=[[p.exitX,rand(3.2,4.6)]];
         }
@@ -284,5 +372,6 @@ const ACTORS=(()=>{
     for(const p of people)scene.remove(p.g);
     people=[];rushVenue=-1;rushUntil=0;
   }
-  return {init,update,rush,reset,makeStaffFigure};
+  function count(){return people.length;}
+  return {init,update,rush,reset,makeStaffFigure,makeSeated,count};
 })();

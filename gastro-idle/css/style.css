@@ -14,6 +14,9 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(
 #scene{position:fixed;inset:0}
 #scene canvas{display:block;cursor:grab}
 #scene canvas:active{cursor:grabbing}
+/* filmische Vignette: bindet HUD und Welt zusammen, lenkt den Blick zur Mitte */
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
+  background:radial-gradient(ellipse at 50% 42%,transparent 55%,rgba(10,8,18,0.28) 100%);}
 
 /* ---------- Topbar ---------- */
 #topbar{position:fixed;top:14px;left:14px;display:flex;flex-direction:column;gap:4px;z-index:5;
