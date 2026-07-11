@@ -81,5 +81,7 @@ const WEATHER=(()=>{
   function skyMod(){return {cloud,sunMul};}
   function info(){const t=TYPES[cur];return t.icon+' '+t.label;}
   function force(){until=0;change();}      // fürs Debug-Panel
-  return {update,mult,crowdMult,skyMod,info,force};
+  function isRainy(){return cur==='regen';}
+  function wetness(){return rain;}         // weich geglätteter Nässegrad 0..1
+  return {update,mult,crowdMult,skyMod,info,force,isRainy,wetness};
 })();

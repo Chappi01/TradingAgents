@@ -133,11 +133,13 @@ const ACTORS=(()=>{
       g=makeHuman({shirt:white,pants:pantsMats[6],hair:randI(0,3)});
       const ap=new THREE.Mesh(P.apron,new THREE.MeshStandardMaterial({color:0x3f5a44,roughness:.85}));
       ap.position.set(0,0.72,0.16);g.add(ap);
+      // Tablett hängt am Arm-Gelenk → bewegt sich beim Servieren mit
       const tray=new THREE.Mesh(P.tray,new THREE.MeshStandardMaterial({color:0xd8d8ce,metalness:.6,roughness:.3}));
-      tray.position.set(0.33,0.85,0.1);g.add(tray);
+      tray.position.set(0.05,-0.31,0.1);
       const cup=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.038,0.08,8),white);
-      cup.position.set(0.33,0.9,0.1);g.add(cup);
-    }else{ // Manager: dunkler Anzug + goldene Krawatte
+      cup.position.set(0.05,-0.26,0.1);
+      g.userData.parts.ra.add(tray);g.userData.parts.ra.add(cup);
+    }else{ // Manager: dunkler Anzug + goldene Krawatte + Klemmbrett
       g=makeHuman({shirt:new THREE.MeshStandardMaterial({color:0x232838,roughness:.6}),
         pants:pantsMats[6],hair:randI(0,2)});
       const shirtV=new THREE.Mesh(P.apron,white);shirtV.scale.set(0.55,0.7,0.6);
@@ -145,7 +147,12 @@ const ACTORS=(()=>{
       const tie=new THREE.Mesh(boxGeo(0.06,0.22,0.03),
         new THREE.MeshStandardMaterial({color:0xd4af37,metalness:.5,roughness:.4}));
       tie.position.set(0,0.87,0.185);g.add(tie);
+      const board=new THREE.Mesh(boxGeo(0.2,0.28,0.02),
+        new THREE.MeshStandardMaterial({color:0xc9a05f,roughness:.8}));
+      board.position.set(0,-0.28,0.09);board.rotation.x=-0.5;
+      g.userData.parts.la.add(board);
     }
+    g.userData.role=type;
     g.rotation.y=Math.PI;
     return g;
   }
@@ -166,11 +173,25 @@ const ACTORS=(()=>{
       wp:[[doorX+rand(-1.5,1.5),sideZ],[doorX+rand(-0.4,0.4),2.7]],
       timer:0,bob:Math.random()*10,exitX:Math.random()<0.5?-24:owned*SPACING+14};
     p.g.position.set(spawnX,0.17,sideZ);
+    // bei Regen kommen Gäste mit buntem Schirm
+    if(WEATHER.isRainy()){
+      const umb=new THREE.Group();
+      const top=new THREE.Mesh(new THREE.ConeGeometry(0.42,0.22,10),
+        shirtMats[randI(0,shirtMats.length-1)]);
+      top.position.y=0.55;umb.add(top);
+      const stick=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.6,6),shoeMat);
+      stick.position.y=0.28;umb.add(stick);
+      umb.position.set(0.05,-0.32,0.05);umb.rotation.x=Math.PI;   // Griff in der Hand
+      p.g.userData.parts.la.add(umb);
+      p.umb=true;
+    }
     people.push(p);
   }
   function walkPose(p,sw){
     const pr=p.g.userData.parts;
-    pr.la.rotation.x=sw*0.65;pr.ra.rotation.x=-sw*0.65;
+    if(p.umb)pr.la.rotation.x=-2.75;               // Schirm hoch über den Kopf
+    else pr.la.rotation.x=sw*0.65;
+    pr.ra.rotation.x=-sw*0.65;
     pr.ll.rotation.x=-sw*0.7;pr.rl.rotation.x=sw*0.7;
     pr.torso.rotation.z=sw*0.035;
   }

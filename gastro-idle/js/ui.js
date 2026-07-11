@@ -339,7 +339,7 @@ const UI=(()=>{
       }
       const gain=starsGain(),bp=$('btnPrestige');
       bp.classList.toggle('ready',gain>=Math.max(10,S.stars*0.5));
-      bp.textContent=gain>0?'⭐ +'+fmt(gain):'⭐';
+      $('prestigeLbl').textContent=gain>0?'+'+fmt(gain):'';
       updateSpeedBar();
       updateBanner();
     }

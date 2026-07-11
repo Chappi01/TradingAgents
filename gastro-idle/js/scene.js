@@ -126,6 +126,7 @@ function buildSkyBodies(){
 /* ---------- Umgebung: Straße, Gehwege, Park, Lampen, Deko ---------- */
 let envGroup=null,envMaxX=0,envDekoTier=-1;
 const lampGlows=[],lampHeads=[],stringLights=[];
+let matStreetRef=null,matWalkRef=null,puddles=[];   // für den Nass-Effekt bei Regen
 function makeGlowTexture(){
   const c=document.createElement('canvas');c.width=c.height=64;
   const g=c.getContext('2d');
@@ -151,6 +152,7 @@ function buildEnvironment(){
   const matGrassB=surf(texNoise('#6da84e','#4e8a3c',70),w/5,6);
   const matWalk=surf(texPavers('#c6bcaa','rgba(90,80,66,0.35)'),w/3.2,1);
   const matStreet=surf(texAsphalt(),w/7,1);matStreet.roughness=.92;
+  matStreetRef=matStreet;matWalkRef=matWalk;
   const matCurb=new THREE.MeshStandardMaterial({color:COLORS.curb,roughness:.9});
   function strip(z0,z1,mat,h){
     const m=new THREE.Mesh(new THREE.BoxGeometry(w,h||0.3,z1-z0),mat);
@@ -181,6 +183,16 @@ function buildEnvironment(){
   for(let x=x0+9;x<x1;x+=23){
     const mh=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.42,0.03,14),manholeMat);
     mh.position.set(x,0.02,7.2+((x/23|0)%2)*2.4);envGroup.add(mh);
+  }
+  // Pfützen: erscheinen weich, wenn es regnet, und spiegeln das Licht
+  puddles=[];
+  const pudMat=()=>new THREE.MeshStandardMaterial({color:0x8ea4b8,metalness:.85,roughness:.12,transparent:true,opacity:0});
+  for(let x=x0+7;x<x1;x+=17){
+    const pd=new THREE.Mesh(new THREE.CircleGeometry(rand(0.5,0.9),12),pudMat());
+    pd.rotation.x=-Math.PI/2;
+    pd.scale.x=rand(1.2,1.9);
+    pd.position.set(x+rand(-3,3),0.03,rand(6.2,10.6));
+    envGroup.add(pd);puddles.push(pd);
   }
   // Laternen
   const poleMat=new THREE.MeshStandardMaterial({color:0x384048,roughness:.5,metalness:.4});
@@ -373,6 +385,14 @@ function updateDayNight(){
   moonSprite.position.set(CAM.x()-Math.cos(a)*80,Math.max(6,-sy),-95);moonSprite.material.opacity=N;
   starMat.opacity=N*0.9;
   updateSkyDome(1/60);
+  // Regen macht die Straße sichtbar nass: dunkler, glänzend, Pfützen spiegeln
+  const wet=WEATHER.wetness();
+  if(matStreetRef){
+    matStreetRef.roughness=0.92-wet*0.62;
+    matStreetRef.metalness=wet*0.32;
+    matWalkRef.roughness=0.95-wet*0.4;
+  }
+  for(const pd of puddles)pd.material.opacity=wet*0.8;
   const t=S.gameTime;
   for(const spr of lampGlows)spr.material.opacity=N*0.55;
   for(const h of lampHeads)h.material.emissiveIntensity=N*1.3;

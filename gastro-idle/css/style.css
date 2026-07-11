@@ -59,6 +59,14 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(
   border-radius:10px;color:var(--text-dim);font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 4px;cursor:pointer;
   transition:color .2s,border-color .2s}
 #tabs button.active{color:var(--gold-soft);border-color:rgba(232,184,75,.5)}
+/* konsistentes SVG-Icon-Set: eine Linienstärke, runde Enden */
+#tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
+#tabs svg,.ctl svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ctl{display:inline-flex;align-items:center;gap:5px}
+.ctl svg.star{fill:currentColor;stroke:none}
+#prestigeLbl{font-size:12px;font-weight:700}
+#prestigeLbl:empty{display:none}
 #panelInner{pointer-events:auto;overflow-y:auto;display:flex;flex-direction:column;gap:10px;
   padding:2px 4px 20px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
 #panelInner::-webkit-scrollbar{width:6px}

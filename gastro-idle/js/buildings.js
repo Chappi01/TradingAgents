@@ -152,6 +152,8 @@ const WORLD=(()=>{
         pl.position.set(p[0],0.52,D/2+0.6);g.add(pl);
       });
     }
+    // Schaufenster-Vitrine mit Speise-Auslage (links neben der Tür)
+    if(GASTRO_FORMS.includes(def.form)&&def.form!=='casino')addShopfront(g,rec,def);
     // Kreidetafel mit Tagesangebot (Gastro-Charme, immer)
     if(GASTRO_FORMS.includes(def.form)&&def.form!=='casino'){
       const bt=makeChalkboardTexture(def);
@@ -164,6 +166,78 @@ const WORLD=(()=>{
         b.rotation.y=side===0?0:Math.PI;
         g.add(b);
       });
+    }
+  }
+  /* Schaufenster-Vorbau: warm beleuchtete Vitrine, in der die Speisen
+     des Betriebs appetitlich ausliegen — nachts glüht sie gemütlich. */
+  function addShopfront(g,rec,def){
+    const {W,D}=rec.facade;
+    const vw=Math.max(1.6,W/2-1.1),vh=1.05,vd=0.72;
+    const cx=-W/4-0.35,cz=D/2+vd/2;
+    const woodM=mat(0x4a3b2e,{roughness:.6});
+    // Sockel, Deckel, Innenboden
+    const base=new THREE.Mesh(roundedBoxGeo(vw+0.18,0.52,vd+0.14,0.07),woodM);
+    base.position.set(cx,0.26,cz);base.castShadow=true;g.add(base);
+    const top=new THREE.Mesh(roundedBoxGeo(vw+0.22,0.1,vd+0.18,0.05),woodM);
+    top.position.set(cx,0.52+vh+0.05,cz);top.castShadow=true;g.add(top);
+    // warm glühende Rückwand (nachts an)
+    rec.vitrineGlow=new THREE.MeshStandardMaterial({color:0xf5e2c0,emissive:0xffc66b,emissiveIntensity:0.1,roughness:.8});
+    const back=new THREE.Mesh(boxGeo(vw,vh,0.05),rec.vitrineGlow);
+    back.position.set(cx,0.52+vh/2,cz-vd/2+0.03);g.add(back);
+    // Glas vorn + Seiten
+    const glassM=new THREE.MeshStandardMaterial({color:0xcfe6f2,roughness:.08,metalness:.2,transparent:true,opacity:.24});
+    const gf=new THREE.Mesh(boxGeo(vw,vh,0.03),glassM);
+    gf.position.set(cx,0.52+vh/2,cz+vd/2);g.add(gf);
+    [[-1],[1]].forEach(s=>{
+      const gs=new THREE.Mesh(boxGeo(0.03,vh,vd),glassM);
+      gs.position.set(cx+s[0]*vw/2,0.52+vh/2,cz);g.add(gs);
+    });
+    // Auslage: stilisierte Speisen passend zum Betriebstyp
+    const shelfY=0.56;
+    const put=(m,dx,dy,dz)=>{m.position.set(cx+dx,shelfY+(dy||0),cz+(dz||0));g.add(m);return m;};
+    const f=def.form;
+    if(f==='cafe'){          // Torten & Tasse
+      const cake=(c,x)=>{
+        put(new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.12,14),mat(c,{roughness:.7})),x,0.06);
+        put(new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.07,12),mat(0xf5e6d8,{roughness:.7})),x,0.16);
+        put(new THREE.Mesh(new THREE.SphereGeometry(0.035,8,6),mat(0xc9302f,{roughness:.4})),x,0.22);
+      };
+      cake(0xd98aa5,-vw/4);cake(0x8a5a3a,vw/5);
+      put(new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.05,0.09,10),mat(0xf5f2ea,{roughness:.5})),vw/2.6,0.05);
+    }else if(f==='pizza'){   // liegende + lehnende Pizza
+      const pm=new THREE.MeshStandardMaterial({map:makePizzaTexture(),roughness:.7});
+      const p1=put(new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.24,0.035,18),pm),-vw/5,0.02);
+      const p2=put(new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.035,18),pm),vw/4,0.2,-0.12);
+      p2.rotation.x=-1.15;
+    }else if(f==='burger'){  // zwei Mini-Burger
+      const bun=(x,r)=>{
+        put(new THREE.Mesh(new THREE.CylinderGeometry(r,r*0.92,0.07,12),mat(0xe8b878,{roughness:.8})),x,0.03);
+        put(new THREE.Mesh(new THREE.CylinderGeometry(r*1.05,r*1.05,0.05,12),mat(0x6a4a2e)),x,0.09);
+        put(new THREE.Mesh(boxGeo(r*1.9,0.02,r*1.9),mat(0xf2c14e)),x,0.125);
+        put(new THREE.Mesh(new THREE.SphereGeometry(r,12,8,0,Math.PI*2,0,Math.PI/2),mat(0xe8b878,{roughness:.8})),x,0.14);
+      };
+      bun(-vw/5,0.13);bun(vw/4,0.1);
+    }else if(f==='sushi'){   // Sushi-Brett mit Rollen
+      put(new THREE.Mesh(boxGeo(0.7,0.04,0.3),mat(0x8a6a4a,{roughness:.8})),0,0.01);
+      for(let k=0;k<4;k++){
+        put(new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.09,10),mat(0xf5f2ea,{roughness:.6})),-0.24+k*0.16,0.075);
+        put(new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.02,8),
+          mat([0xe36a5a,0xf2a05e,0x7ccd6a,0xd98aa5][k],{roughness:.4})),-0.24+k*0.16,0.13);
+      }
+    }else if(f==='steak'){   // Steaks auf dem Brett
+      put(new THREE.Mesh(boxGeo(0.66,0.04,0.34),mat(0x8a6a4a,{roughness:.8})),0,0.01);
+      [[-0.15,0.6],[0.16,-0.4]].forEach(p=>{
+        const st=put(new THREE.Mesh(roundedBoxGeo(0.26,0.07,0.19,0.05),mat(0x9e3f36,{roughness:.55})),p[0],0.075);
+        st.rotation.y=p[1];
+      });
+    }else{                   // Hotel/Luxus: Flaschen & Gläser
+      [[-0.2,0x3f6a4a],[0,0x7a4a30],[0.2,0xd4af37]].forEach(p=>{
+        put(new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.055,0.3,10),
+          mat(p[1],{roughness:.25,metalness:.3})),p[0],0.15);
+        put(new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.09,8),mat(p[1])),p[0],0.34);
+      });
+      put(new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.03,0.12,10),
+        new THREE.MeshStandardMaterial({color:0xcfe6f2,roughness:.1,transparent:true,opacity:.5})),0.38,0.06);
     }
   }
   function makeChalkboardTexture(def){
@@ -708,17 +782,34 @@ const WORLD=(()=>{
     if(rec.staffGroup)rec.group.remove(rec.staffGroup);
     const v=S.venues[i];
     const sg=new THREE.Group();
+    let hasChef=false;
     v.emp.slice(0,3).forEach((e,k)=>{
-      const fig=ACTORS.makeStaffFigure(CHEF_ROLES.includes(e.role)?'chef':'waiter');
+      const type=CHEF_ROLES.includes(e.role)?'chef':'waiter';
+      if(type==='chef')hasChef=true;
+      const fig=ACTORS.makeStaffFigure(type);
       fig.position.set(-1.6+k*1.1,0,3.1);
       fig.userData.bobOff=k*1.3;
+      fig.userData.baseX=fig.position.x;
       sg.add(fig);
     });
     if(v.mgr){
       const m=ACTORS.makeStaffFigure('manager');
       m.position.set(2.1,0,3.1);
-      m.userData.bobOff=9;
+      m.userData.bobOff=9;m.userData.baseX=2.1;
       sg.add(m);
+    }
+    // Vorbereitungstisch fürs Küchenpersonal: Brett, Tomaten, Messer-Andeutung
+    if(hasChef){
+      const tbl=new THREE.Mesh(roundedBoxGeo(0.9,0.08,0.5,0.04),mat(0xdcd4c2,{roughness:.6}));
+      tbl.position.set(-1.6,0.72,3.55);sg.add(tbl);
+      const leg=new THREE.Mesh(boxGeo(0.08,0.7,0.08),mat(0x8a8478));
+      leg.position.set(-1.6,0.36,3.55);sg.add(leg);
+      const board=new THREE.Mesh(boxGeo(0.4,0.03,0.28),mat(0x9a7a52,{roughness:.8}));
+      board.position.set(-1.7,0.78,3.55);sg.add(board);
+      for(let k=0;k<3;k++){
+        const tom=new THREE.Mesh(new THREE.SphereGeometry(0.045,8,6),mat(0xd0453c,{roughness:.4}));
+        tom.position.set(-1.42+k*0.09,0.79,3.5);sg.add(tom);
+      }
     }
     rec.staffGroup=sg;
     rec.group.add(sg);
@@ -759,9 +850,35 @@ const WORLD=(()=>{
           a.m.rotation.y=-a.t;
         }
       }
-      if(rec.staffGroup){                 // Personal wippt bei der Arbeit
-        for(const f of rec.staffGroup.children)
-          f.position.y=Math.abs(Math.sin(t*4+f.userData.bobOff))*0.06;
+      if(rec.staffGroup){                 // Personal arbeitet sichtbar an seiner Rolle
+        for(const f of rec.staffGroup.children){
+          const parts=f.userData.parts;
+          if(!parts)continue;             // Requisiten (Tisch, Brett …) überspringen
+          const off=f.userData.bobOff||0;
+          if(f.userData.role==='chef'){   // hackt rhythmisch auf dem Brett
+            f.position.y=0;
+            parts.ra.rotation.x=-0.85+Math.abs(Math.sin(t*6.5+off))*0.55;
+            parts.la.rotation.x=-0.5;
+            parts.torso.rotation.z=Math.sin(t*6.5+off)*0.02;
+          }else if(f.userData.role==='waiter'){ // Patrouille mit Tablett
+            const ph=t*0.8+off;
+            f.position.x=f.userData.baseX+Math.sin(ph)*1.15;
+            const mv=Math.cos(ph);
+            f.rotation.y=mv>0?Math.PI*0.5:-Math.PI*0.5;
+            const sw=Math.sin(t*7+off)*Math.min(1,Math.abs(mv)*1.8);
+            parts.ll.rotation.x=-sw*0.55;parts.rl.rotation.x=sw*0.55;
+            parts.la.rotation.x=sw*0.35;
+            parts.ra.rotation.x=-1.15;    // Tablett-Arm bleibt oben
+            f.position.y=Math.abs(Math.sin(t*7+off))*0.035;
+          }else if(f.userData.role==='manager'){ // prüft Klemmbrett, nickt
+            f.position.y=0;
+            parts.la.rotation.x=-0.85;
+            parts.head.rotation.x=0.25+Math.sin(t*1.6+off)*0.08;
+            parts.head.rotation.y=Math.sin(t*0.7+off)*0.35;
+          }else{
+            f.position.y=Math.abs(Math.sin(t*4+off))*0.06;
+          }
+        }
       }
     }
   }
