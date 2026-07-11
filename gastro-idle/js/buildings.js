@@ -597,19 +597,19 @@ const WORLD=(()=>{
   function topOf(i){const rec=buildings[i];return rec?rec.height:5;}
   function pop(i,v){const rec=buildings[i];if(rec)rec.pop=Math.max(rec.pop,v);}
 
-  /* Personal-Figuren vor dem Betrieb (Koch, Kellner, Manager) */
+  /* Personal-Figuren vor dem Betrieb — Figur passend zur Rolle des Charakters */
+  const CHEF_ROLES=['Koch','Chefkoch','Konditor'];
   function refreshStaff(i){
     const rec=buildings[i];if(!rec)return;
     if(rec.staffGroup)rec.group.remove(rec.staffGroup);
     const v=S.venues[i];
     const sg=new THREE.Group();
-    const n=Math.min(v.staff,3);
-    for(let k=0;k<n;k++){
-      const fig=ACTORS.makeStaffFigure(k===0?'chef':'waiter');
+    v.emp.slice(0,3).forEach((e,k)=>{
+      const fig=ACTORS.makeStaffFigure(CHEF_ROLES.includes(e.role)?'chef':'waiter');
       fig.position.set(-1.6+k*1.1,0,3.1);
       fig.userData.bobOff=k*1.3;
       sg.add(fig);
-    }
+    });
     if(v.mgr){
       const m=ACTORS.makeStaffFigure('manager');
       m.position.set(2.1,0,3.1);

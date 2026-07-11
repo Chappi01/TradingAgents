@@ -97,12 +97,112 @@ const ACH_GROUPS=[
   text:n=>fmt([1,2,3,5,8,13,21][n]||21*Math.pow(2,n-6))+'× neu eröffnet'},
 ];
 
-/* ---------- Personal & Manager (pro Betrieb) ---------- */
-const STAFF_MAX=5;
-const STAFF_BONUS=0.30;            // +30 % Einnahmen je Angestellten
-const MGR_BONUS=2.5;               // Manager: ×2,5
+/* ---------- Zentrale Balancing-Konfiguration ----------
+   Alle wichtigen Stellschrauben an einem Ort (Debug-Panel: ?debug). */
+const CONFIG={
+  staffMax:5,          // Teamgröße je Betrieb (ohne Manager)
+  staffBonus:0.30,     // Einnahmen-Basis je Teammitglied
+  mgrBonus:2.5,        // Manager-Multiplikator
+  staffLvlBonus:0.03,  // je Mitarbeiter-Level zusätzlich (auf seinen Beitrag)
+  xpPerSec:1,          // XP-Gewinn pro Sekunde Betrieb
+  starBonus:0.02,      // je Michelin-Stern
+  rankBonus:0.06,      // je Ruf-Rang
+  tipShare:0.02,       // Trinkgeld je Gast (Anteil vom Umlauf)
+  offlineCapH:24,      // Stunden Offline-Verdienst maximal
+  dailyRewardSec:120,  // Tagesaufgabe: Belohnung ≈ n Sekunden Einkommen
+  msRewardSec:420,     // Meilenstein: Belohnung ≈ n Sekunden Einkommen
+};
+const STAFF_MAX=CONFIG.staffMax;
+const STAFF_BONUS=CONFIG.staffBonus;
+const MGR_BONUS=CONFIG.mgrBonus;
 function staffCost(i,n){return getDef(i).cost*40*Math.pow(5,n);}
 function managerCost(i){return getDef(i).cost*600;}
+
+/* ---------- Mitarbeiter-Charaktere ---------- */
+const EMP_FIRST=['Lena','Ben','Mia','Jonas','Emma','Paul','Ida','Noah','Frieda','Karl','Zoé','Max','Tilda','Ole','Nele','Emil','Greta','Anton','Lotte','Theo','Marlene','Bruno','Clara','Oskar','Yuki','Rosa','Samir','Ivy'];
+const EMP_LAST=['Sommer','Brotgold','Pfefferkorn','Salzmann','Honigmann','Zimtstern','Kirschbaum','Krümel','Sahnestein','Muskat','Vanille','Löffelholz','Messerle','Brenner','Kesselring','Schaumburg'];
+const ROLE_EMOJI={'Koch':'👨‍🍳','Chefkoch':'👩‍🍳','Konditor':'🧁','Kellner':'🤵','Barista':'☕','Barkeeper':'🍸','Empfang':'💁','Sommelier':'🍷','Manager':'🎩'};
+const KITCHEN_FORMS=['cart','pizza','burger','sushi','steak','hotel','luxury','world'];
+const RARITIES=[
+ {name:'Solide',    mult:1,   w:58, col:'#9aa0ad'},
+ {name:'Talentiert',mult:1.3, w:27, col:'#6fd58a'},
+ {name:'Brillant',  mult:1.7, w:12, col:'#6a9ee3'},
+ {name:'Legendär',  mult:2.4, w:3,  col:'#e8b84b'},
+];
+const TRAITS=[
+ {id:'tip',  icon:'💰',name:'Charmeur',      info:'+10 % Trinkgeld im Betrieb'},
+ {id:'speed',icon:'⚡',name:'Flinke Hände',  info:'Betrieb arbeitet 4 % schneller'},
+ {id:'mood', icon:'☀️',name:'Sonnenschein',  info:'+3 % Gästezufriedenheit'},
+ {id:'night',icon:'🦉',name:'Nachteule',     info:'+15 % Einnahmen nachts'},
+ {id:'day',  icon:'🐦',name:'Frühaufsteher', info:'+15 % Einnahmen tagsüber'},
+ {id:'xp',   icon:'📚',name:'Wissbegierig',  info:'Lernt doppelt so schnell'},
+];
+const QUIRKS=['singt beim Arbeiten','hasst Montage','sammelt Salzstreuer','erzählt Papa-Witze','tanzt beim Abwasch',
+ 'benennt alle Töpfe','spricht mit den Pflanzen','trinkt 9 Espressi am Tag','pfeift Filmmusik','verlegt ständig den Stift',
+ 'kennt jeden Stammgast beim Namen','träumt vom eigenen Foodtruck'];
+
+/* ---------- Ruf-Ränge (Bewertungssystem) ---------- */
+const RANKS=[
+ {name:'Straßenstand',                 icon:'🛖', pts:0},
+ {name:'Lokaler Geheimtipp',           icon:'🌱', pts:30},
+ {name:'Beliebtes Lokal',              icon:'😊', pts:85},
+ {name:'Regionale Marke',              icon:'🏙️', pts:170},
+ {name:'Ausgezeichnetes Haus',         icon:'🏅', pts:310},
+ {name:'Luxus-Gastronomie',            icon:'💎', pts:540},
+ {name:'Internationale Spitzenklasse', icon:'🌍', pts:850},
+ {name:'Legendäres Gastro-Imperium',   icon:'👑', pts:1250},
+];
+
+/* ---------- Tagesaufgaben ---------- */
+const DAILY_DEFS=[
+ {id:'guests',icon:'🧑‍🤝‍🧑',metric:'guests',goal:r=>30+r*35,  text:g=>'Bediene '+fmt(g)+' Gäste'},
+ {id:'dishes',icon:'🍽️',metric:'dishes',goal:r=>60+r*80,  text:g=>'Verkaufe '+fmt(g)+' Gerichte'},
+ {id:'tips',  icon:'🪙',metric:'tips',  goal:r=>25+r*25,  text:g=>'Kassiere '+fmt(g)+' Trinkgelder'},
+ {id:'levels',icon:'📈',metric:'levels',goal:r=>25+r*20,  text:g=>'Kaufe '+fmt(g)+' Level'},
+ {id:'clicks',icon:'👆',metric:'clicks',goal:r=>12+r*6,   text:g=>'Feuere deine Betriebe '+fmt(g)+'× an'},
+ {id:'hires', icon:'👥',metric:'hires', goal:r=>1,        text:g=>'Stelle '+g+' neues Teammitglied ein'},
+];
+
+/* ---------- Meilenstein-Kette (kleine Geschichte des Aufstiegs) ---------- */
+const MS_LIST=[
+ {icon:'🌭',text:'Bediene 25 Gäste an deinem Imbisswagen',        check:()=>S.met.guests>=25},
+ {icon:'☕',text:'Eröffne das Café nebenan',                       check:()=>S.venues.length>=2},
+ {icon:'👥',text:'Stelle dein erstes Teammitglied ein',            check:()=>S.met.hires>=1},
+ {icon:'📈',text:'Erreiche insgesamt Level 50',                    check:()=>totalLevels()>=50},
+ {icon:'🍕',text:'Eröffne die Pizzeria',                           check:()=>S.venues.length>=3},
+ {icon:'🌱',text:'Werde zum „Lokalen Geheimtipp“',                 check:()=>S.rank>=1},
+ {icon:'🪙',text:'Kassiere 100 Trinkgelder',                       check:()=>S.met.tips>=100},
+ {icon:'💶',text:'Verdiene deine erste Million',                   check:()=>S.lifeEarned>=1e6},
+ {icon:'🎩',text:'Ein Manager führt einen deiner Betriebe',        check:()=>S.venues.some(v=>v.mgr)},
+ {icon:'🍔',text:'Eröffne den Burgerladen',                        check:()=>S.venues.length>=4},
+ {icon:'😊',text:'Werde zum „Beliebten Lokal“',                    check:()=>S.rank>=2},
+ {icon:'🍣',text:'Eröffne die Sushi-Bar',                          check:()=>S.venues.length>=5},
+ {icon:'💰',text:'Verdiene 1 Milliarde',                           check:()=>S.lifeEarned>=1e9},
+ {icon:'🏆',text:'Sammle 10 Erfolge',                              check:()=>ACH_GROUPS.reduce((a,g)=>a+(S.ach[g.id]||0),0)>=10},
+ {icon:'🏨',text:'Eröffne das Hotelrestaurant',                    check:()=>S.venues.length>=7},
+ {icon:'🏙️',text:'Werde zur „Regionalen Marke“',                   check:()=>S.rank>=3},
+ {icon:'🛳️',text:'Steche mit dem Kreuzfahrtschiff in See',         check:()=>S.venues.length>=9},
+ {icon:'⭐',text:'Wage deine erste Neueröffnung (Prestige)',        check:()=>S.prestiges>=1},
+ {icon:'🎡',text:'Eröffne den Freizeitpark',                       check:()=>S.venues.length>=10},
+ {icon:'🏅',text:'Werde zum „Ausgezeichneten Haus“',               check:()=>S.rank>=4},
+ {icon:'🎰',text:'Eröffne das Casino',                             check:()=>S.venues.length>=11},
+ {icon:'💶',text:'Verdiene 1 Billion',                             check:()=>S.lifeEarned>=1e12},
+ {icon:'✈️',text:'Eröffne den Flughafen',                          check:()=>S.venues.length>=12},
+ {icon:'🥄',text:'Verdiene deinen ersten Goldenen Löffel',         check:()=>S.spoons>=1},
+ {icon:'🌐',text:'Vollende die weltweite Gastronomie',             check:()=>S.venues.length>=15},
+ {icon:'👑',text:'Werde zum „Legendären Gastro-Imperium“',         check:()=>S.rank>=7},
+];
+function getMilestone(idx){
+  if(idx<MS_LIST.length)return MS_LIST[idx];
+  const n=idx-MS_LIST.length,goal=Math.pow(10,13+n*3);
+  return {icon:'🌌',text:'Verdiene insgesamt '+fmt(goal)+' €',check:()=>S.lifeEarned>=goal};
+}
+
+/* ---------- Lange Zahlennamen (Format-Option „ausgeschrieben“) ---------- */
+const TIER_LONG=['Millionen','Milliarden','Billionen','Billiarden','Trillionen','Trilliarden',
+ 'Quadrillionen','Quadrilliarden','Quintillionen','Quintilliarden','Sextillionen','Sextilliarden',
+ 'Septillionen','Septilliarden','Oktillionen','Oktilliarden','Nonillionen','Nonilliarden',
+ 'Dezillionen','Dezilliarden'];
 
 /* ---------- Meilensteine ---------- */
 function msCount(l){let c=0;if(l>=10)c++;if(l>=25)c++;if(l>=50)c++;if(l>=100)c+=Math.floor(l/100);return c;}

@@ -1,7 +1,8 @@
 'use strict';
 /* ============================================================
    main.js — Start & Hauptschleife
-   Reihenfolge: Spielstand → 3D-Welt → Akteure → UI → Loop
+   Simulation (dt × Spieltempo) und Präsentation (Kamera/UI mit
+   rohem dt) sind getrennt, damit Pause/2×/4× sauber wirken.
    ============================================================ */
 S=load();
 const isNew=!storeGet();
@@ -19,23 +20,38 @@ if(webglOk){
     '<div style="padding:100px 30px;text-align:center;color:#889">3D wird von diesem Browser nicht unterstützt – das Spiel läuft trotzdem weiter!</div>';
 }
 UI.init();
+if(S._restoredFromBackup){delete S._restoredFromBackup;UI.toast('💾 Sicherungskopie wiederhergestellt.');}
 
-/* Offline-Verdienst beim Laden */
+/* Offline-Verdienst beim Laden — mit ausführlicher Bilanz */
 {
   const away=(Date.now()-S.lastSeen)/1000;
   if(!isNew&&away>60){
-    const total=applyOffline(away);
-    if(total>0)UI.showOffline(total,away);
+    const o=applyOffline(away);
+    if(o.total>0)UI.showOffline(o);
   }
 }
 if(isNew)setTimeout(UI.showHelp,600);
 
-/* Audio erst nach erster Interaktion (Browser-Vorgabe) */
 document.addEventListener('pointerdown',()=>{AUDIO.ensure();AUDIO.resume();});
 
 setInterval(save,10000);
 window.addEventListener('beforeunload',save);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)save();});
+
+/* ---------- Debug-/Balancing-Panel (?debug an die URL hängen) ---------- */
+if(location.search.includes('debug')){
+  const p=document.createElement('div');
+  p.id='debugbar';
+  p.innerHTML='<b>DEBUG</b>'+
+    '<button onclick="S.money+=Math.max(1e3,totalRate()*600)">+Geld</button>'+
+    '<button onclick="S.money*=1000">Geld ×1000</button>'+
+    '<button onclick="WEATHER.force()">Wetter</button>'+
+    '<button onclick="spawnEvent()">Event</button>'+
+    '<button onclick="S.gameTime+=DAY_LEN/4">+¼ Tag</button>'+
+    '<button onclick="UI.showOffline(applyOffline(3600))">+1 h offline</button>'+
+    '<button onclick="console.log(JSON.parse(JSON.stringify(S)))">Dump</button>';
+  document.body.appendChild(p);
+}
 
 /* ---------- Hauptschleife ---------- */
 let last=performance.now(),perfT=0,perfF=0,perfDone=false;
@@ -54,20 +70,26 @@ function frame(now){
     }
   }
   if(dt>15){                             // Tab war lange im Hintergrund
-    const total=applyOffline(dt);
-    if(dt>90&&total>0)UI.showOffline(total,dt);
+    const o=applyOffline(dt);
+    if(dt>90&&o.total>0)UI.showOffline(o);
     dt=0.05;
   }
   dt=Math.min(dt,0.5);
-  S.gameTime+=dt;
-  tickEconomy(dt);
+  const sim=dt*S.speed;                  // Spieltempo: Pause/1×/2×/4×
+  if(sim>0){
+    S.gameTime+=sim;
+    tickEconomy(sim);
+    WEATHER.update(sim);
+    if(webglOk){
+      ACTORS.update(sim);
+      FX.update(sim);
+      WORLD.update(sim);
+      updateClouds(sim);
+    }
+  }
   if(webglOk){
-    ACTORS.update(dt);
-    FX.update(dt);
-    WORLD.update(dt);
-    updateClouds(dt);
     updateDayNight();
-    CAM.update(dt);
+    CAM.update(dt);                      // Kamera bleibt auch in Pause weich
     renderer.render(scene,camera);
   }
   UI.frame(dt);

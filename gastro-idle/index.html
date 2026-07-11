@@ -14,7 +14,14 @@
   <div id="gameTitle">🍽️ Gastro-Imperium</div>
   <div id="money">0 €</div>
   <div id="rate"><b>0 €</b> pro Sekunde</div>
-  <div id="subline"><span id="satInfo"></span><span id="starsInfo"></span></div>
+  <div id="subline"><span id="rankInfo"></span><span id="satInfo"></span><span id="weatherInfo"></span><span id="starsInfo"></span></div>
+</div>
+
+<div id="speedbar">
+  <button data-sp="p" title="Pause">⏸</button>
+  <button data-sp="1" title="Normales Tempo">1×</button>
+  <button data-sp="2" title="Doppeltes Tempo (ab Ruf-Rang 2)">2×</button>
+  <button data-sp="4" title="Vierfaches Tempo (ab Ruf-Rang 4)">4×</button>
 </div>
 
 <div id="controls">
@@ -29,6 +36,7 @@
   <div id="tabs">
     <button data-tab="venues" class="active">🏪 Betriebe</button>
     <button data-tab="upgrades">🔬 Upgrades</button>
+    <button data-tab="ziele">🎯 Ziele</button>
     <button data-tab="boni">🏆 Boni</button>
   </div>
   <div id="panelInner"></div>
@@ -40,7 +48,10 @@
 <script src="js/util.js"></script>
 <script src="js/data.js"></script>
 <script src="js/state.js"></script>
+<script src="js/staff.js"></script>
 <script src="js/economy.js"></script>
+<script src="js/missions.js"></script>
+<script src="js/weather.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/scene.js"></script>

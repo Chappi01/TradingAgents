@@ -84,7 +84,8 @@ const ACTORS=(()=>{
 
   /* ---------- Gäste-Logik ---------- */
   function targetCount(){
-    return clamp(6+S.venues.length*4+Math.floor(Math.log10(Math.max(10,S.lifeEarned))),8,PEOPLE_MAX);
+    const base=clamp(6+S.venues.length*4+Math.floor(Math.log10(Math.max(10,S.lifeEarned))),8,PEOPLE_MAX);
+    return Math.round(base*WEATHER.crowdMult());   // bei Regen weniger Laufkundschaft
   }
   function spawnGuest(){
     const owned=S.venues.length;

@@ -29,6 +29,19 @@ Einfach **`index.html` doppelklicken** — das Spiel läuft direkt im Browser, k
 - 🎵 Prozedurale Lo-Fi-Hintergrundmusik + dezente Soundeffekte (WebAudio, keine Dateien)
 - ⚡ Adaptive Grafikqualität, korrektes sRGB-Farbmanagement, ACES-Tonemapping, weiche Schatten
 
+## Neu in V3
+
+- 👥 **Mitarbeiter als Charaktere**: Bewerber-Auswahl (3 Kandidaten), Name, Rolle, Seltenheit,
+  Spezialfähigkeit, Marotte, Level & Erfahrung (auch offline), Team-Album
+- 🎯 **Ziele-Tab**: 3 Tagesaufgaben pro Tag + 26 Karriere-Meilensteine mit Belohnungen
+- 🏙️ **Ruf-Ränge**: Straßenstand → Legendäres Gastro-Imperium, mit großer Inszenierung,
+  dauerhaften Boni und Freischaltungen (2×/4×-Tempo)
+- 🌦️ **Wetter**: Regen (Lieferdienst boomt, sichtbarer Niederschlag), Hitzewelle (Getränke!)
+- ⏸ **Spieltempo**: Pause / 1× / 2× / 4× (durch Ruf freischaltbar, nie durch Geld)
+- 🔢 Zahlenformat wählbar (kurz / ausgeschrieben / wissenschaftlich)
+- 💾 Save v3 mit Sicherungskopie + automatischer Migration alter Stände
+- 🛠️ Debug-/Balancing-Panel per `?debug`, zentrale CONFIG in data.js
+
 ## Steuerung
 
 - **Ziehen**: Kamera drehen · **Scrollen**: Zoomen · **Klick auf Gebäude**: Bonus-Schub

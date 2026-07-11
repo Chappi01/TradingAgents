@@ -12,8 +12,13 @@ function fmt(n){
   if(!isFinite(n))return'∞';
   if(n<0)return'-'+fmt(-n);
   if(n<1e6)return n.toLocaleString('de-DE',{maximumFractionDigits:0});
+  const mode=(typeof S!=='undefined'&&S&&S.numFmt)||'kurz';
+  if(mode==='sci')return n.toExponential(2).replace('.',',').replace('e+','e');
   for(let i=TIERS.length-1;i>=0;i--){
-    if(n>=TIERS[i][1])return (n/TIERS[i][1]).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+TIERS[i][0];
+    if(n>=TIERS[i][1]){
+      const val=(n/TIERS[i][1]).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
+      return val+' '+(mode==='lang'&&typeof TIER_LONG!=='undefined'?TIER_LONG[i]:TIERS[i][0]);
+    }
   }
   return n.toExponential(2).replace('.',',');
 }

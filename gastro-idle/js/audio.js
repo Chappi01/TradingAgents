@@ -11,16 +11,21 @@ const AUDIO=(()=>{
     const AC=window.AudioContext||window.webkitAudioContext;
     if(!AC)return false;
     ac=new AC();
-    sfxBus=ac.createGain();sfxBus.gain.value=0.15;sfxBus.connect(ac.destination);
-    musicBus=ac.createGain();musicBus.gain.value=0.05;musicBus.connect(ac.destination);
+    sfxBus=ac.createGain();sfxBus.gain.value=0.25*S.volSfx;sfxBus.connect(ac.destination);
+    musicBus=ac.createGain();musicBus.gain.value=0.1*S.volMusic;musicBus.connect(ac.destination);
     startMusic();
     return true;
   }
   function resume(){if(ac&&ac.state==='suspended')ac.resume();}
+  function applyVolumes(){
+    if(!ac)return;
+    sfxBus.gain.linearRampToValueAtTime(0.25*S.volSfx,ac.currentTime+0.2);
+    musicBus.gain.linearRampToValueAtTime(0.1*S.volMusic,ac.currentTime+0.2);
+  }
 
   /* ---------- SFX ---------- */
   function tone(f0,f1,dur,type,vol,delay){
-    if(!ac||!S.sfx)return;
+    if(!ac||S.volSfx<=0)return;
     const t=ac.currentTime+(delay||0);
     const o=ac.createOscillator(),g=ac.createGain();
     o.type=type||'sine';
@@ -41,7 +46,11 @@ const AUDIO=(()=>{
     achieve(){[784,988,1175,1568,1976].forEach((f,j)=>tone(f,f,0.13,'sine',0.4,j*0.06));},
     event(){tone(880,660,0.25,'sine',0.4);tone(660,880,0.25,'sine',0.4,0.22);},
     coin(){tone(1976,2637,0.07,'square',0.06);},
-    setMusic(on){if(musicBus)musicBus.gain.linearRampToValueAtTime(on?0.05:0,ac?ac.currentTime+0.5:0);},
+    rankUp(){ // große Fanfare für den Ruf-Aufstieg
+      [392,523,659,784,1047,1319].forEach((f,j)=>tone(f,f,0.22,'triangle',0.5,j*0.11));
+      [784,1047].forEach((f,j)=>tone(f,f,0.5,'sine',0.3,0.7+j*0.05));
+    },
+    applyVolumes,
   };
 
   /* ---------- Musik: sanfte Akkord-Pads + Pentatonik-Arpeggio ----------
@@ -83,9 +92,8 @@ const AUDIO=(()=>{
   }
   function startMusic(){
     if(musicTimer)return;
-    api.setMusic(S.music);
     scheduleBar();
-    musicTimer=setInterval(()=>{if(document.hidden)return;scheduleBar();},4000);
+    musicTimer=setInterval(()=>{if(document.hidden||S.volMusic<=0)return;scheduleBar();},4000);
   }
   return api;
 })();

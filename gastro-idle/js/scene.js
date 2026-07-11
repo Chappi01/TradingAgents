@@ -229,24 +229,28 @@ function updateClouds(dt){
 function dayT(){return (S.gameTime%DAY_LEN)/DAY_LEN;}
 function sunElev(){return Math.sin((dayT()-0.25)*Math.PI*2);}
 function nightFactor(){return clamp(-sunElev()*1.6,0,1);}
-const _tmpCol=new THREE.Color();
+const _tmpCol=new THREE.Color(),_greyCol=new THREE.Color(0x9aa4b2),_greyNight=new THREE.Color(0x1a2030);
 function updateDayNight(){
   const e=sunElev();
   const L=clamp(e*1.5,0,1),N=nightFactor();
+  const wx=WEATHER.skyMod();
   skyCol.copy(COLORS.night).lerp(COLORS.day,L);
-  const dawn=clamp(1-Math.abs(e)/0.3,0,1)*0.55;
+  const dawn=clamp(1-Math.abs(e)/0.3,0,1)*0.55*(1-wx.cloud*0.8);
   skyCol.lerp(COLORS.dawn,dawn);
+  // Bewölkung graut den Himmel ab
+  _tmpCol.copy(_greyNight).lerp(_greyCol,L);
+  skyCol.lerp(_tmpCol,wx.cloud*0.75);
   scene.background=skyCol;
   scene.fog.color.copy(skyCol);
   const a=(dayT()-0.25)*Math.PI*2;
   const sx=CAM.x()+Math.cos(a)*80,sy=Math.sin(a)*80;
   sun.position.set(sx,Math.max(9,sy),34);
   sun.target.position.set(CAM.x(),0,4);
-  sun.intensity=0.1+L*1.2;
+  sun.intensity=(0.1+L*1.2)*wx.sunMul*(1-wx.cloud*0.45);
   _tmpCol.copy(COLORS.sunLow).lerp(COLORS.sunDay,L);sun.color.copy(_tmpCol);
-  hemi.intensity=0.22+L*0.62;
+  hemi.intensity=(0.22+L*0.62)*(1-wx.cloud*0.25);
   fillLight.intensity=0.08+L*0.2;
-  sunSprite.position.set(sx,sy,-90);sunSprite.material.opacity=clamp(e*2+0.3,0,1);
+  sunSprite.position.set(sx,sy,-90);sunSprite.material.opacity=clamp(e*2+0.3,0,1)*(1-wx.cloud*0.85);
   moonSprite.position.set(CAM.x()-Math.cos(a)*80,Math.max(6,-sy),-95);moonSprite.material.opacity=N;
   starMat.opacity=N*0.9;
   const t=S.gameTime;

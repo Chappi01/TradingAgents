@@ -14,8 +14,9 @@ function incomeMult(){                       // globaler Einkommens-Multiplikato
     else if(f.effect==='walk')m*=Math.pow(f.val,t);
   }
   m*=satisfaction();
-  m*=1+0.02*S.stars;                         // Michelin-Sterne
+  m*=1+CONFIG.starBonus*S.stars;             // Michelin-Sterne
   m*=1+S.spoons;                             // Goldene Löffel: +100 % je Löffel
+  m*=1+CONFIG.rankBonus*S.rank;              // Ruf-Rang
   m*=achMult();
   return m;
 }
@@ -23,8 +24,8 @@ function speedMult(){                        // globale Umlaufzeit (kleiner = sc
   return Math.max(0.3,Math.pow(0.92,upTier('koch')));
 }
 function satisfaction(){                     // Gästezufriedenheit (Anzeige + Multiplikator)
-  let staff=0;for(const v of S.venues)staff+=v.staff+(v.mgr?1:0);
-  return clamp(1+upTier('deko')*0.08+Math.min(staff,60)*0.01,1,3.5);
+  let staff=0;for(const v of S.venues)staff+=v.emp.length+(v.mgr?1:0);
+  return clamp(1+upTier('deko')*0.08+Math.min(staff,60)*0.01+STAFF.moodBonus(),1,3.5);
 }
 function walkSpeedMult(){return Math.min(2.2,Math.pow(1.15,upTier('lauf')));}
 function achMult(){
@@ -38,12 +39,12 @@ function tipMult(){return Math.pow(1.12,upTier('tip'));}
 function venueStats(i){
   const d=getDef(i),v=S.venues[i];
   const ms=msCount(v.lvl);
-  const baseTime=d.time*speedMult();
+  const baseTime=d.time*speedMult()*STAFF.speedMult(v);
   const maxSpeed=Math.max(0,Math.floor(Math.log2(baseTime/0.25)));
   const k=Math.min(ms,maxSpeed);
   const time=baseTime/Math.pow(2,k);
-  const local=(1+STAFF_BONUS*v.staff)*(v.mgr?MGR_BONUS:1);
-  const rev=d.rev*v.lvl*Math.pow(2,ms-k)*local*incomeMult()*eventMult(i);
+  const local=STAFF.mult(v)*STAFF.dayNightMult(v);
+  const rev=d.rev*v.lvl*Math.pow(2,ms-k)*local*incomeMult()*eventMult(i)*WEATHER.mult(d);
   return {time,rev,rate:rev/time,continuous:time<=0.27};
 }
 function totalRate(){let r=0;for(let i=0;i<S.venues.length;i++)r+=venueStats(i).rate;return r;}
@@ -80,31 +81,49 @@ function tickEconomy(dt){
         const cycles=Math.floor(v.prog);
         v.prog-=cycles;
         earn(st.rev*cycles,i,true);
+        S.met.dishes+=cycles;
       }
     }
   }
   updateEvents();
+  STAFF.tickXp(dt);
+  MISSIONS.update(dt);
   achTimer-=dt;
   if(achTimer<=0){achTimer=1;checkAchievements();}
 }
 
-/* ---------- Offline-Einnahmen ---------- */
+/* ---------- Offline-Einnahmen (mit ausführlicher Bilanz) ---------- */
 function applyOffline(seconds){
-  const s=Math.min(seconds,86400);
+  const s=Math.min(seconds,CONFIG.offlineCapH*3600);
   events=[];UI.hideBanner();
-  let total=0;
+  let total=0,dishes=0,bestI=0,bestSum=0;
   for(let i=0;i<S.venues.length;i++){
     const v=S.venues[i],st=venueStats(i);
-    if(st.continuous){total+=st.rate*s;}
+    let sum=0;
+    if(st.continuous){sum=st.rate*s;dishes+=Math.floor(s/Math.max(st.time,0.05));}
     else{
       const elapsed=v.prog*st.time+s;
       const cycles=Math.floor(elapsed/st.time);
       v.prog=(elapsed-cycles*st.time)/st.time;
-      total+=cycles*st.rev;
+      sum=cycles*st.rev;dishes+=cycles;
+    }
+    total+=sum;
+    if(sum>bestSum){bestSum=sum;bestI=i;}
+  }
+  // Team lernt auch offline weiter (halbes Tempo), Gäste-Statistik wächst mit
+  let lvlUps=0;
+  const guests=Math.min(Math.round(dishes*0.8),Math.round(s*2*S.venues.length));
+  if(total>0){
+    S.money+=total;S.runEarned+=total;S.lifeEarned+=total;
+    S.met.dishes+=dishes;S.met.guests+=guests;
+    for(const v of S.venues)for(const e of STAFF.all(v)){
+      const old=e.lvl;
+      e.xp+=s*0.5*CONFIG.xpPerSec*(TRAITS[e.trait].id==='xp'?2:1);
+      e.lvl=Math.min(50,1+Math.floor(Math.sqrt(e.xp/90)));
+      lvlUps+=e.lvl-old;
     }
   }
-  if(total>0){S.money+=total;S.runEarned+=total;S.lifeEarned+=total;}
-  return total;
+  return {total,dishes,guests,lvlUps,bestI,bestSum,secs:s};
 }
 
 /* ---------- Käufe ---------- */
@@ -117,7 +136,7 @@ function tryBuyLevels(i){
     cost=levelCost(i,n);
   }
   const before=msCount(v.lvl);
-  S.money-=cost;v.lvl+=n;
+  S.money-=cost;v.lvl+=n;S.met.levels+=n;
   AUDIO.buy();
   if(msCount(v.lvl)>before)celebrateMilestone(i);
   else WORLD.pop(i,0.5);
@@ -142,27 +161,20 @@ function tryUnlock(){
   UI.toast(d.emoji+' <b>'+d.name+'</b> eröffnet!');
   UI.buildPanel();
 }
-function tryHireStaff(i){
+/* Einstellen läuft über die Bewerber-Auswahl (UI.showHire) — der Spieler
+   entscheidet sich für einen von drei Kandidaten. */
+function hireEmployee(i,cand,isMgr){
   const v=S.venues[i];
-  if(v.staff>=STAFF_MAX)return;
-  const c=staffCost(i,v.staff);
-  if(S.money<c)return;
-  S.money-=c;v.staff++;S.staffHired++;
+  const c=isMgr?managerCost(i):staffCost(i,v.emp.length);
+  if(S.money<c)return false;
+  if(isMgr){if(v.mgr)return false;v.mgr=cand;}
+  else{if(v.emp.length>=STAFF_MAX)return false;v.emp.push(cand);}
+  S.money-=c;S.staffHired++;S.met.hires++;
   WORLD.refreshStaff(i);
   AUDIO.buy();
-  UI.toast('👥 Neue Verstärkung für <b>'+getDef(i).name+'</b>! (+'+Math.round(STAFF_BONUS*100)+' %)');
+  UI.toast(ROLE_EMOJI[cand.role]+' <b>'+cand.name+'</b> verstärkt jetzt '+getDef(i).name+'!');
   UI.refreshCard(i);
-}
-function tryHireManager(i){
-  const v=S.venues[i];
-  if(v.mgr)return;
-  const c=managerCost(i);
-  if(S.money<c)return;
-  S.money-=c;v.mgr=true;S.staffHired++;
-  WORLD.refreshStaff(i);
-  AUDIO.milestone();
-  UI.toast('🎩 Manager übernimmt <b>'+getDef(i).name+'</b>: ×'+MGR_BONUS.toLocaleString('de-DE')+'!');
-  UI.refreshCard(i);
+  return true;
 }
 function tryBuyUpgrade(famId){
   const fam=UPGRADE_FAMILIES.find(f=>f.id===famId);
@@ -182,6 +194,7 @@ function clickBoost(vi){
   const st=venueStats(vi);
   if(st.continuous)earn(st.rate*1.2,vi,true);
   else v.prog=Math.min(v.prog+0.22,1.6);
+  S.met.clicks++;
   WORLD.pop(vi,0.65);
   FX.money(vi);
   AUDIO.cash();
@@ -189,9 +202,11 @@ function clickBoost(vi){
 
 /* ---------- Trinkgeld beim Gäste-Abschied (kleine, stetige Belohnung) ---------- */
 function guestTip(vi){
+  const v=S.venues[vi];if(!v)return;
   const st=venueStats(vi);
-  const tip=st.rev*0.02*tipMult();
+  const tip=st.rev*CONFIG.tipShare*tipMult()*STAFF.tipMultOf(v);
   S.money+=tip;S.runEarned+=tip;S.lifeEarned+=tip;
+  S.met.tips++;S.met.guests++;
   FX.coin(vi);
 }
 
