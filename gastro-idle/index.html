@@ -10,6 +10,29 @@
 <body>
 <div id="scene"></div>
 <div id="vignette"></div>
+<div id="grain"></div>
+<div id="cineTop" class="cinebar"></div>
+<div id="cineBot" class="cinebar"></div>
+
+<!-- Titelbildschirm im Konsolen-Stil -->
+<div id="title">
+  <div id="titleInner">
+    <div id="titleKicker">Ein gemütliches Gastro-Aufbauspiel</div>
+    <div id="titleLogo">GASTRO<span>—</span>IMPERIUM</div>
+    <div id="titleRule"></div>
+    <button id="titleStart" class="titleBtn">Weiterspielen</button>
+    <div id="titleHint">Klick · Enter · <i>✕</i> am Controller</div>
+  </div>
+</div>
+
+<!-- Controller-Tastenhinweise (erscheinen bei Gamepad-Eingabe) -->
+<div id="glyphbar">
+  <span><i class="g gx">✕</i>Auswählen</span>
+  <span><i class="g go">○</i>Zurück</span>
+  <span><i class="g gs">L1</i><i class="g gs">R1</i>Tabs</span>
+  <span><i class="g gs">☰</i>Optionen</span>
+  <span><i class="g gs">⬡</i>Sticks: Kamera</span>
+</div>
 
 <div id="topbar">
   <div id="gameTitle">🍽️ Gastro-Imperium</div>
@@ -63,6 +86,7 @@
 <script src="js/actors.js"></script>
 <script src="js/buildings.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/input.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

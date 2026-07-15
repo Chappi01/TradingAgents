@@ -757,6 +757,7 @@ const WORLD=(()=>{
     rec.anim={t:0};
     rec.group.scale.set(0.01,0.01,0.01);
     CAM.focus(i*SPACING);
+    UI.cinema(2600);                       // kleine Eröffnungs-Inszenierung
   }
   function milestone(i){
     const rec=buildings[i];

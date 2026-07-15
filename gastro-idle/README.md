@@ -45,6 +45,8 @@ Einfach **`index.html` doppelklicken** — das Spiel läuft direkt im Browser, k
 ## Steuerung
 
 - **Ziehen**: Kamera drehen · **Scrollen**: Zoomen · **Klick auf Gebäude**: Bonus-Schub
+- **🎮 Controller**: linker Stick Kamera, rechter Stick Zoom, ✕ Auswählen, ○ Zurück, L1/R1 Tabs, Steuerkreuz Fokus, Options Einstellungen (Tastenhinweise erscheinen automatisch)
+- **Tastatur**: Leertaste Pause, 1–4 Tabs, Enter startet vom Titelbildschirm
 - Oben rechts: Kaufmenge (×1/×10/×25/×100/Max), Einstellungen, Hilfe, Prestige
 - Unten Mitte: Spieltempo ⏸/1×/2×/4×
 - Panel-Tabs: 🏪 Betriebe · 🔬 Upgrades · 🎯 Ziele · 🏆 Boni

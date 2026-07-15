@@ -22,15 +22,30 @@ if(webglOk){
 UI.init();
 if(S._restoredFromBackup){delete S._restoredFromBackup;UI.toast('💾 Sicherungskopie wiederhergestellt.');}
 
-/* Offline-Verdienst beim Laden — mit ausführlicher Bilanz */
+/* Filmkorn-Overlay (einmalig erzeugte Rausch-Textur) */
+{
+  const c=document.createElement('canvas');c.width=c.height=128;
+  const g=c.getContext('2d');
+  const d=g.createImageData(128,128);
+  for(let i=0;i<d.data.length;i+=4){
+    const v=(Math.random()*255)|0;
+    d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255;
+  }
+  g.putImageData(d,0,0);
+  document.getElementById('grain').style.backgroundImage='url('+c.toDataURL()+')';
+}
+
+/* Offline-Verdienst berechnen, aber erst NACH dem Titelbildschirm zeigen */
+let pendingAfterTitle=null;
 {
   const away=(Date.now()-S.lastSeen)/1000;
   if(!isNew&&away>60){
     const o=applyOffline(away);
-    if(o.total>0)UI.showOffline(o);
+    if(o.total>0)pendingAfterTitle=()=>UI.showOffline(o);
   }
 }
-if(isNew)setTimeout(UI.showHelp,600);
+if(isNew)pendingAfterTitle=UI.showHelp;
+UI.showTitle(!isNew,pendingAfterTitle);
 
 document.addEventListener('pointerdown',()=>{AUDIO.ensure();AUDIO.resume();});
 
@@ -75,6 +90,7 @@ function frame(now){
     dt=0.05;
   }
   dt=Math.min(dt,0.5);
+  INPUT.update(dt);                      // Gamepad (läuft auch in Pause & Titel)
   const sim=dt*S.speed;                  // Spieltempo: Pause/1×/2×/4×
   if(sim>0){
     S.gameTime+=sim;

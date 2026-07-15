@@ -56,6 +56,41 @@ const UI=(()=>{
     document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
     buildPanel();
   }
+  const TAB_ORDER=['venues','upgrades','ziele','boni'];
+  function cycleTab(dir){
+    const i=(TAB_ORDER.indexOf(activeTab)+dir+TAB_ORDER.length)%TAB_ORDER.length;
+    setTab(TAB_ORDER[i]);
+  }
+  function cycleTabTo(i){setTab(TAB_ORDER[clamp(i,0,3)]);}
+
+  /* ---------- Titelbildschirm & Letterbox-Inszenierung ---------- */
+  let titleCb=null,cineTimer=null;
+  function showTitle(hasSave,onClose){
+    titleCb=onClose||null;
+    $('titleStart').textContent=hasSave?'Weiterspielen':'Neues Spiel';
+    document.body.classList.add('title-open');
+    $('title').classList.remove('hide');
+    $('titleStart').onclick=closeTitle;
+    const key=e=>{if(e.key==='Enter'||e.key===' '){closeTitle();}};
+    document.addEventListener('keydown',key,{once:true});
+  }
+  function closeTitle(){
+    const t=$('title');
+    if(t.classList.contains('hide'))return;
+    t.classList.add('hide');
+    document.body.classList.remove('title-open');
+    AUDIO.ensure();AUDIO.resume();AUDIO.unlock();
+    if(titleCb){const cb=titleCb;titleCb=null;setTimeout(cb,500);}
+  }
+  function cinema(ms){                     // Letterbox-Kamerafahrt, überspringbar
+    if(document.body.classList.contains('title-open'))return;
+    document.body.classList.add('cine');
+    CAM.punch(0.9);
+    clearTimeout(cineTimer);
+    const end=()=>{document.body.classList.remove('cine');document.removeEventListener('pointerdown',end);};
+    cineTimer=setTimeout(end,ms||2400);
+    document.addEventListener('pointerdown',end,{once:true});
+  }
 
   /* ================= Panel ================= */
   function buildPanel(){
@@ -426,7 +461,8 @@ const UI=(()=>{
   }
   return {init,buildPanel,buildUpgrades,refreshCard,refreshMs,frame,
     showBanner,hideBanner,toast,toastGold,showHire,doHire,
-    openModal,closeModal,showOffline,showPrestige,showSettings,showHelp,updateSpeedBar};
+    openModal,closeModal,showOffline,showPrestige,showSettings,showHelp,updateSpeedBar,
+    showTitle,closeTitle,cinema,cycleTab,cycleTabTo};
 })();
 function hardReset(){
   if(!confirm('Wirklich ALLES löschen? Auch Sterne, Löffel und Ruf gehen verloren.'))return;

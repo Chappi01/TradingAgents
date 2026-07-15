@@ -437,5 +437,7 @@ const CAM=(()=>{
   }
   return {update,initControls,
     focus(x){focusX=x;},x(){return camX;},
-    punch(v){punch=Math.max(punch,v===undefined?1:v);}};
+    punch(v){punch=Math.max(punch,v===undefined?1:v);},
+    orbit(dT,dP){theta+=dT;phi=clamp(phi+dP,0.18,1.15);lastInput=performance.now();},
+    zoom(f){radius=clamp(radius*f,13,70);lastInput=performance.now();}};
 })();
